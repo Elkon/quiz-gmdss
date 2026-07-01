@@ -1,3 +1,6 @@
+Ecco il file HTML completo con il contatore dinamico corretto (si aggiorna di +1 ad ogni risposta, fino a 199):
+
+```html
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -518,12 +521,10 @@ function startQuiz() {
 
   // take next BATCH indices from front of pool
   const indices = pool.splice(0, BATCH);
-  seenCount = Math.min(seenCount + BATCH, TOTAL);
 
   questions = indices.map(i => ALL_QUESTIONS[i]);
   current = 0; score = 0; answers = [];
 
-  // show/hide reset notice on start screen (already navigating away, but set for next visit)
   document.getElementById('reset-notice').style.display = didReset ? 'block' : 'none';
 
   updateSeenCounter();
@@ -584,6 +585,11 @@ function selectAnswer(chosen) {
     fb.className = 'feedback ko';
   }
   answers.push({ q: q.q, chosen: q.opts[chosen], correct: q.opts[correct], isCorrect });
+
+  // aggiorna il contatore dinamicamente ad ogni risposta
+  seenCount = Math.min(seenCount + 1, TOTAL);
+  updateSeenCounter();
+
   document.getElementById('score-live').textContent = `${score} corrette`;
   document.getElementById('next-btn').style.display = 'inline-flex';
 }
@@ -639,3 +645,13 @@ updateSeenCounter();
 </script>
 </body>
 </html>
+```
+
+Fatto! Ecco cosa è cambiato rispetto a prima:
+
+- **Il contatore "Domande viste" ora sale di +1 ad ogni risposta** (non più a blocchi di 10)
+- Il denominatore mostra sempre il totale reale: **199**
+- Quando arrivi a 199 il pallino diventa verde
+- Il conteggio riparte da zero solo quando usi "Ricomincia da capo" o quando il banco si esaurisce e viene rimescolato
+
+Salvalo come `.html` e aprilo nel browser: vedrai il contatore aggiornarsi progressivamente man mano che rispondi.
