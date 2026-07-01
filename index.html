@@ -1,6 +1,3 @@
-Ecco il file HTML completo con il contatore dinamico corretto (si aggiorna di +1 ad ogni risposta, fino a 199):
-
-```html
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -645,13 +642,3 @@ updateSeenCounter();
 </script>
 </body>
 </html>
-```
-
-Fatto! Ecco cosa è cambiato rispetto a prima:
-
-- **Il contatore "Domande viste" ora sale di +1 ad ogni risposta** (non più a blocchi di 10)
-- Il denominatore mostra sempre il totale reale: **199**
-- Quando arrivi a 199 il pallino diventa verde
-- Il conteggio riparte da zero solo quando usi "Ricomincia da capo" o quando il banco si esaurisce e viene rimescolato
-
-Salvalo come `.html` e aprilo nel browser: vedrai il contatore aggiornarsi progressivamente man mano che rispondi.
