@@ -14,6 +14,9 @@
     --success-bg: #f0fdf4;
     --danger: #dc2626;
     --danger-bg: #fef2f2;
+    --info: #7c3aed;
+    --info-bg: #f5f3ff;
+    --info-border: #ddd6fe;
     --surface: #ffffff;
     --surface-1: #f8fafc;
     --border: #e2e8f0;
@@ -31,6 +34,9 @@
       --success-bg: #14532d;
       --danger: #f87171;
       --danger-bg: #7f1d1d;
+      --info: #a78bfa;
+      --info-bg: #2e1065;
+      --info-border: #6d28d9;
       --surface: #1e293b;
       --surface-1: #0f172a;
       --border: #334155;
@@ -157,6 +163,34 @@
   .feedback { margin-top: 1rem; font-size: 14px; min-height: 20px; line-height: 1.4; }
   .feedback.ok { color: var(--success); }
   .feedback.ko { color: var(--danger); }
+
+  /* Explanation box */
+  .explanation {
+    display: none;
+    margin-top: 1rem;
+    background: var(--info-bg);
+    border: 1px solid var(--info-border);
+    border-left: 4px solid var(--info);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .explanation.show { display: block; animation: fadeIn 0.25s ease; }
+  .explanation-title {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 600; font-size: 13px;
+    color: var(--info);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .next-row { margin-top: 1.25rem; display: flex; justify-content: flex-end; }
 
   /* Results */
@@ -188,6 +222,12 @@
   .review-ok { color: var(--success); }
   .review-ko { color: var(--danger); }
   .review-correct-hint { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+  .review-expl {
+    font-size: 12px; color: var(--text-secondary);
+    margin-top: 6px; padding: 8px 10px;
+    background: var(--surface-1); border-radius: 6px;
+    border-left: 3px solid var(--info); line-height: 1.5;
+  }
   .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
   /* Reset notice */
@@ -229,7 +269,7 @@
       <div class="rules">
         <div class="rule"><span class="rule-icon">🎲</span><span>10 domande alla volta, sempre nuove — prima di ripetere una domanda le vedrai tutte</span></div>
         <div class="rule"><span class="rule-icon">✅</span><span>Puoi sbagliare al massimo <strong>2 risposte</strong> per superare il quiz</span></div>
-        <div class="rule"><span class="rule-icon">💡</span><span>Dopo ogni risposta vedi subito la correzione</span></div>
+        <div class="rule"><span class="rule-icon">💡</span><span>Dopo ogni risposta vedi la correzione e una spiegazione</span></div>
       </div>
       <div class="reset-notice" id="reset-notice">
         🔄 Hai visto tutte le domande — il banco è stato rimescolato, si riparte dall'inizio!
@@ -251,6 +291,10 @@
       <div class="q-text" id="q-text"></div>
       <div class="options" id="options"></div>
       <div class="feedback" id="feedback"></div>
+      <div class="explanation" id="explanation">
+        <div class="explanation-title">💡 Spiegazione</div>
+        <div id="explanation-text"></div>
+      </div>
       <div class="next-row">
         <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none">
           Avanti →
@@ -280,207 +324,608 @@
 </div>
 <script>
 const ALL_QUESTIONS = [
-  {q:"Che cosa significa l'acronimo GMDSS?",opts:["Global Marine Data Satellite System","General Marine Digital Security System","Global Maritime Distress and Safety System"],a:2},
-  {q:"Il GMDSS è un sistema progettato per:",opts:["Solo comunicazioni commerciali","Controllare la navigazione automatica","Gestire comunicazioni di soccorso e sicurezza in mare"],a:2},
-  {q:"Il GMDSS si applica principalmente a:",opts:["Solo alle navi militari","Solo alle piccole unità da diporto","Naviglio maggiore (>300 tsl)"],a:2},
-  {q:"Quale tecnologia è alla base del GMDSS?",opts:["Wi-Fi marino","HF solo fonia","DSC (Digital Selective Calling)"],a:2},
-  {q:"Quale canale è dedicato alle chiamate DSC in VHF?",opts:["Ch.13","Ch.70","Ch.16"],a:1},
-  {q:"Il canale 16 nel GMDSS è usato per:",opts:["Chiamate e soccorso in fonia","Solo chiamate interne","Trasmissioni DSC"],a:0},
-  {q:"In Area A1 la copertura è assicurata da:",opts:["Satelliti INMARSAT","Stazione costiera con DSC su VHF","Ripetitori terrestri VOR"],a:1},
-  {q:"La portata tipica dell'Area A1 è:",opts:["150-200 Mn","20-40 Mn","1-5 Mn"],a:1},
-  {q:"In Area A3 si comunicano distress principalmente tramite:",opts:["Sistemi satellitari","Solo AIS","HF in fonia"],a:0},
-  {q:"Il GMDSS prevede l'ascolto continuo:",opts:["Ch.16 + Ch.70","Solo Ch.70","Solo Ch.16"],a:0},
-  {q:"Un VHF marino è un apparato:",opts:["Solo ricevitore","Solo trasmettitore","Ricetrasmettitore"],a:2},
-  {q:"La potenza massima di un VHF fisso è:",opts:["50W","25W","5W"],a:1},
-  {q:"Il comando HIGH/LOW serve a:",opts:["Regolare la potenza di trasmissione","Cambiare canale rapidamente","Regolare la squelch"],a:0},
-  {q:"La funzione DUAL WATCH permette:",opts:["Aumento di potenza","Ricezione solo DSC","Ascolto alternato tra due canali"],a:2},
-  {q:"Il tasto Distress:",opts:["Non esiste nei VHF moderni","È libero e immediato","È protetto da coperchio"],a:2},
-  {q:"Chi ascolta costantemente il Ch.70?",opts:["La sezione DSC","Il GPS","La sezione fonia"],a:0},
-  {q:"Il microtelefono serve a:",opts:["Misurare distanza","Memorizzare MMSI","Convertire la voce in segnale elettrico"],a:2},
-  {q:"Gli apparati VHF funzionano tipicamente a:",opts:["48V","110V","12V"],a:2},
-  {q:"Se a bordo abbiamo solo 24V si usa:",opts:["Una batteria da 1.5V","Un riduttore di tensione","Un inverter"],a:1},
-  {q:"La sezione DSC:",opts:["Amplifica la potenza","Decodifica messaggi digitali","Serve solo in porto"],a:1},
-  {q:"Le onde VHF sono:",opts:["Ionizzanti","Acustiche","Elettromagnetiche non ionizzanti"],a:2},
-  {q:"La portata VHF è:",opts:["Ottica","Illimitata","≤1 km"],a:0},
-  {q:"L'altezza antenna:",opts:["Non influisce","Influenza la portata","Blocca GPS"],a:1},
-  {q:"Le antenne VHF di bordo sono:",opts:["Direzionali strette","HF monopolo","Omnidirezionali"],a:2},
-  {q:"Il ROS indica:",opts:["Velocità nave","Qualità collegamento antenna-radio","Numero canali"],a:1},
-  {q:"ROS > 3:",opts:["Perdita potenza e rischio danni","Massima efficienza","Nessun problema"],a:0},
-  {q:"Il cavo antenna è:",opts:["Doppino","Coassiale","Fibra ottica"],a:1},
-  {q:"Connettore tipico:",opts:["USB","RJ45","PL"],a:2},
-  {q:"Antenna tarata male:",opts:["Migliora segnale","Aumenta ROS","Stabilizza frequenza"],a:1},
-  {q:"Antenna chiusa alla continua:",opts:["Amplifica segnale","Scarica cariche su massa","Riduce potenza"],a:1},
-  {q:"Il GPS fornisce:",opts:["Latitudine e longitudine","Solo rotta","Solo velocità"],a:0},
-  {q:"GPS integrato nel VHF:",opts:["Invia posizione nei messaggi DSC","Mostra marea","Sostituisce AIS"],a:0},
-  {q:"In distress la posizione:",opts:["Non serve","È inserita automaticamente","Si comunica solo a voce"],a:1},
-  {q:"VHF riceve GPS tramite:",opts:["NMEA","Bluetooth","HDMI"],a:0},
-  {q:"DSC richiede:",opts:["Batteria esterna","Inserire MMSI","Cambio antenna"],a:1},
-  {q:"MMSI identifica:",opts:["Il comandante","La batteria","La nave"],a:2},
-  {q:"Se la posizione non appare sul VHF:",opts:["Non influisce","È prescrizione da risolvere","È normale"],a:1},
-  {q:"GPS senza display invia a:",opts:["Solo AIS","Solo EPIRB","VHF o plotter"],a:2},
-  {q:"Il GPS è fondamentale soprattutto:",opts:["Solo con mare calmo","Nel distress","Solo in porto"],a:1},
-  {q:"Attivazione DSC richiede:",opts:["Antenna diversa","Memorizzazione MMSI","Cambio canale"],a:1},
-  {q:"Un MMSI nave ha:",opts:["9 cifre","6 cifre","12 cifre"],a:0},
-  {q:"MID dell'Italia:",opts:["111","238","247"],a:2},
-  {q:"MMSI costiero inizia con:",opts:["98","00","11"],a:1},
-  {q:"Call Sign italiano inizia con:",opts:["V (Victor)","I (India)","A (Alfa)"],a:1},
-  {q:"Call Sign identifica:",opts:["Rotta","Stazione radio di bordo","Comandante"],a:1},
-  {q:"Navi figlie usano MMSI:",opts:["98...","00...","50..."],a:0},
-  {q:"Trieste Radio MMSI:",opts:["002470135","002387010","247000019"],a:0},
-  {q:"VTS Venezia MMSI:",opts:["002470135","247111999","247000019"],a:2},
-  {q:"Rijeka Radio MMSI:",opts:["002387010","247000019","002470135"],a:0},
-  {q:"MMSI identifica:",opts:["L'armatore","Il singolo VHF","La nave"],a:2},
-  {q:"Ch.16 è per:",opts:["AIS","Chiamata e soccorso","Port operations"],a:1},
-  {q:"Ch.70 è per:",opts:["AIS","Fonia","DSC digitale"],a:2},
-  {q:"Simplex:",opts:["Solo ascolto","Nave-nave","Nave-costiera"],a:1},
-  {q:"Duplex:",opts:["Nave-nave","Nave-costiera","Solo piloti"],a:1},
-  {q:"Ch.86 è:",opts:["Duplex","Simplex","Solo AIS"],a:0},
-  {q:"Ch.13 è:",opts:["DSC","Servizi ausiliari","EPIRB"],a:1},
-  {q:"Capitaneria Venezia usa:",opts:["Ch.14","Ch.05","Ch.11"],a:2},
-  {q:"Capitaneria Chioggia usa:",opts:["Ch.14","Ch.09","Ch.11"],a:0},
-  {q:"Trieste Radio ascolta:",opts:["Ch.13","Ch.16","Ch.70"],a:1},
-  {q:"VTS Venezia lavora su:",opts:["Ch.70","Ch.9","Ch.86"],a:1},
-  {q:"Distress si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:0},
-  {q:"Urgency si introduce con:",opts:["SECURITE'","PAN PAN","MAYDAY"],a:1},
-  {q:"Safety si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:2},
-  {q:"Dopo DSC Distress si passa a:",opts:["Ch.13","Ch.16","Ch.70"],a:1},
-  {q:"Messaggio MAYDAY deve essere:",opts:["In codice","Veloce","Lento e chiaro"],a:2},
-  {q:"Distress DSC ripete ogni:",opts:["1 min","1 ora","4-5 min"],a:2},
-  {q:"MAYDAY include:",opts:["Solo nome nave","Posizione + persone a bordo","Solo stato mare"],a:1},
-  {q:"Specificare natura distress:",opts:["Premendo Distress lungo/breve","Accendere AIS","Cambiare canale"],a:0},
-  {q:"Esempio natura distress:",opts:["Man Over Board","Vento forte","Porto chiuso"],a:0},
-  {q:"Dopo invio distress non si deve:",opts:["Ascoltare","Stare su Ch.16","Spegnere radio"],a:2},
-  {q:"Ricevuto Distress DSC:",opts:["NON dare ACK","Ignorare","Dare ACK"],a:0},
-  {q:"Dopo ricezione distress si resta su:",opts:["Ch.13","Ch.70","Ch.16"],a:2},
-  {q:"Distress Relay:",opts:["Fine trasmissione","Messaggio di routine","Rilancia distress se costa non risponde"],a:2},
-  {q:"Annullare falso distress:",opts:["Ignorare","Spegnere/riaccendere + messaggio","Solo cambiare canale"],a:1},
-  {q:"Annullamento inizia con:",opts:["PAN PAN","SECURITY CALL","ALL STATIONS"],a:2},
-  {q:"Dopo ALL STATIONS si dice:",opts:["OK","THIS IS + call sign + MMSI","STOP"],a:1},
-  {q:"Nel cancel distress si indica:",opts:["Ora UTC","Temperatura","Velocità"],a:0},
-  {q:"ACK al Distress può darlo:",opts:["Stazione costiera/SAR","Pesca locale","Qualsiasi nave"],a:0},
-  {q:"Durante emergenza:",opts:["Lasciare libero Ch.16","Cambiare canale spesso","Parlare sempre"],a:0},
-  {q:"OVER significa:",opts:["Comunicazione conclusa","Passo, attendo risposta","Ripetere"],a:1},
-  {q:"Quale dispositivo trasmette segnale satellitare di soccorso?",opts:["GPS","EPIRB","AIS"],a:1},
-  {q:"Quale dispositivo localizza MOB via AIS?",opts:["NAVTEX","AIS-SART","VHF portatile"],a:1},
-  {q:"Il servizio VTS fornisce:",opts:["Solo ormeggio","Previsioni maree","Informazioni traffico e sicurezza"],a:2},
-  {q:"Chi coordina SAR?",opts:["MRCC","VTS","Pilota porto"],a:0},
-  {q:"Se ricevi MAYDAY e costa non risponde:",opts:["Distress Relay","Aspetti 30 min","Ignori"],a:0},
-  {q:"Per identificare nave in fonia:",opts:["Nome nave + Call Sign + MMSI","Solo nome","Numero persone"],a:0},
-  {q:"Collisione senza feriti:",opts:["SECURITE'","MAYDAY","PAN PAN"],a:2},
-  {q:"Oggetto pericoloso alla deriva:",opts:["PAN PAN","MAYDAY","SECURITE'"],a:2},
-  {q:"NAVTEX trasmette:",opts:["Idrografia","Posizione nave","Avvisi meteo e sicurezza"],a:2},
-  {q:"VHF portatile deve avere:",opts:["Solo 9","Solo 16","Ch.16 e Ch.70"],a:2},
-  {q:"Distanza VHF taxi acquei:",opts:["100 Mn","1 Mn","~10 Mn"],a:2},
-  {q:"Ch.13 serve per:",opts:["Soccorso","Servizi portuali","Manovra e sicurezza"],a:2},
-  {q:"Comunicazioni devono essere:",opts:["Conversazionali","Brevi, chiare, senza frasi inutili","In dialetto"],a:1},
-  {q:"Voce deve essere:",opts:["Gridata","Velocissima","Scandita e costante"],a:2},
-  {q:"Chiusura comunicazione:",opts:["OVER","FINITO","OUT"],a:2},
-  {q:"Passo la parola:",opts:["OVER","OUT","GO"],a:0},
-  {q:"ROS si misura con:",opts:["Voltmetro","ROSmeter","Tester"],a:1},
-  {q:"DSC Routine Call richiede:",opts:["Call Sign","MMSI destinatario","Niente"],a:1},
-  {q:"Se GPS scollegato:",opts:["Radio non funziona","DSC non inserisce posizione","Trasmette solo 25W"],a:1},
-  {q:"Incendio a bordo:",opts:["SECURITE'","MAYDAY FIRE","PAN PAN"],a:1},
-  {q:"Cosa significa l'acronimo GMDSS?",opts:["Global Maritime Distress and Safety System","General Marine Digital Satellite Service","Global Marine Distress Signaling Standard"],a:0},
-  {q:"Qual è la frequenza di trasmissione DSC in VHF?",opts:["156.800 MHz (canale 16)","156.525 MHz (canale 70)","156.650 MHz (canale 13)"],a:1},
-  {q:"Quale codice MID è assegnato all'Italia?",opts:["238","211","247"],a:2},
-  {q:"Cosa indica un ROS (Rapporto d'Onda Stazionaria) pari a 1?",opts:["Antenna mal accordata con perdita di potenza","Trasmissione efficiente senza riflessi","Danneggiamento del cavo coassiale"],a:1},
-  {q:"Per le unità nella Laguna Veneta, l'autonomia minima della batteria del VHF deve essere:",opts:["1 ora","3 ore","6 ore"],a:1},
-  {q:"Quale funzione permette di ascoltare contemporaneamente il canale 16 e un altro canale?",opts:["Dual Watch","Priority Scan","Tri-watch"],a:0},
-  {q:"Cosa trasmette automaticamente una chiamata DSC di Distress?",opts:["Solo la posizione GPS","MMSI e posizione GPS","Natura dell'emergenza e numero di persone a bordo"],a:1},
-  {q:"Come è strutturato il MMSI di una stazione costiera?",opts:["MID + 6 cifre","00 + MID + 4 cifre","98 + MID + 3 cifre"],a:1},
-  {q:"Quale tasto è obbligatoriamente protetto da un coperchio?",opts:["Tasto 16/C","Tasto DISTRESS","Tasto Dual Watch"],a:1},
-  {q:"Cosa si intende per zona A1 nel GMDSS?",opts:["Area con copertura satellitare INMARSAT","Area entro 20-40 mn da una stazione costiera VHF/DSC","Regioni polari oltre 70° di latitudine"],a:1},
-  {q:"Quale standard di comunicazione è utilizzato per interfacciare GPS e VHF?",opts:["MED","NMEA","DSC"],a:1},
-  {q:"Cosa si deve fare se si invia per errore un Distress DSC?",opts:["Inviare una chiamata di Safety sul canale 16","Spegnere il VHF, riaccenderlo e annullare sul canale 16 a voce","Attendere l'ACK della stazione costiera"],a:1},
-  {q:"Quale frase si utilizza per terminare definitivamente una comunicazione radio?",opts:["OVER","OUT","ROGER"],a:1},
-  {q:"Quale canale è dedicato alle comunicazioni di sicurezza per il traffico navale?",opts:["Canale 70","Canale 16","Canale 13"],a:2},
-  {q:"Cosa identifica il Call Sign?",opts:["La potenza massima della radio","L'identità internazionale dell'imbarcazione","La posizione GPS"],a:1},
-  {q:"Per una chiamata DSC di Routine, chi invia l'ACK?",opts:["Tutte le navi in ascolto","Solo la stazione costiera","Il destinatario specifico"],a:2},
-  {q:"Quale potenza massima può erogare un VHF portatile?",opts:["25 W","5 W","10 W"],a:1},
-  {q:"Cosa causa un ROS elevato (>3)?",opts:["Cavo coassiale di alta qualità","Ossidazione dell'antenna o connettori","GPS non collegato"],a:1},
-  {q:"Quale comando radio si usa per richiedere un controllo della trasmissione?",opts:["Seelonce","Radio Check","Received"],a:1},
-  {q:"Cosa significa l'acronimo ITU?",opts:["International Transport Union","International Telecommunication Union","Italian Telecommunications Unit"],a:1},
-  {q:"Quale elemento è fondamentale per la portata radio in VHF?",opts:["Temperatura dell'acqua","Altezza delle antenne","Velocità della nave"],a:1},
-  {q:"Cosa si trasmette con una chiamata DSC di Safety?",opts:["Richiesta di soccorso immediato","Avvisi meteorologici o pericoli per la navigazione","Comunicazioni mediche urgenti"],a:1},
-  {q:"Cosa comporta l'inserimento dell'MMSI in un ricevitore VHF DSC?",opts:["La calibrazione automatica dell'antenna","La registrazione dello stesso è irreversibile per l'utente e necessita del centro assistenza in caso di errore","La disattivazione della trasmissione fonia"],a:1},
-  {q:"Cosa indica l'icona MAIL sul display VHF?",opts:["Batteria scarica","Messaggio DSC non letto","Errore nel GPS"],a:1},
-  {q:"Quale zona GMDSS copre le regioni polari?",opts:["Area A2","Area A3","Area A4"],a:2},
-  {q:"Come si pronuncia il Call Sign 'ICTW2'?",opts:["India Charlie Tango Whiskey Two","India Charlie Tango William Two","India Charlie Tango West Two"],a:0},
-  {q:"Quale connettore è comune per l'antenna VHF?",opts:["BNC","PL-259","USB-C"],a:1},
-  {q:"Cosa si intende per chiamata 'Simplex'?",opts:["Trasmissione e ricezione su frequenze diverse","Comunicazione solo tra stazione costiera e nave","Trasmissione e ricezione sulla stessa frequenza"],a:2},
-  {q:"Quale tasto si usa per eliminare l'acqua dalla griglia dell'altoparlante?",opts:["AQUA","SQL","DW"],a:0},
-  {q:"Cosa deve fare una nave che riceve un Distress DSC?",opts:["Inviare immediatamente l'ACK","Rimanere in ascolto sul canale 16 senza interferire","Ripetere la chiamata sul canale 70"],a:1},
-  {q:"Quale frequenza è riservata alle comunicazioni DSC?",opts:["156.800 MHz","156.525 MHz","157.425 MHz"],a:1},
-  {q:"Cosa significa l'acronimo MMSI?",opts:["Marine Meteorological Safety Information","Maritime Mobile Service Identity","Maritime Manual Safety Indicator"],a:1},
-  {q:"Qual è la velocità di propagazione delle onde radio?",opts:["300.000 km/s","150.000 km/s","450.000 km/s"],a:0},
-  {q:"Per le navi nella Laguna Veneta, dove deve essere installata la radio?",opts:["In qualsiasi luogo asciutto","In plancia, comoda dal posto di governo","Nella sala macchine"],a:1},
-  {q:"Cosa si usa per regolare la soglia del rumore di fondo?",opts:["Manopola VOLUME","Manopola SQL","Tasto HI/LO"],a:1},
-  {q:"Quale tipo di antenna NON è ammessa sulle navi?",opts:["Antenna omnidirezionale","Antenna direttiva","Antenna collineare"],a:1},
-  {q:"Cosa trasmette una chiamata di Urgency?",opts:["Informazioni mediche urgenti","Avvisi di sicurezza generici","Dati di posizione"],a:0},
-  {q:"Quale documento autorizza l'uso del VHF in Italia?",opts:["Certificato ROC","Licenza di esercizio radioelettrica","Patente nautica"],a:1},
-  {q:"Cosa indica il prefisso '98' in un MMSI?",opts:["Stazione costiera","Unità associata a nave madre","Mezzo di soccorso aereo"],a:1},
-  {q:"Quale canale è dedicato alle chiamate di soccorso in fonia?",opts:["Canale 70","Canale 16","Canale 9"],a:1},
-  {q:"Cosa si deve fare dopo l'esposizione alla salsedine?",opts:["Pulire con solventi aggressivi","Lavare con acqua dolce e asciugare","Sostituire l'antenna"],a:1},
-  {q:"Quale classe di apparato VHF è prevista per il diporto?",opts:["Classe A","Classe D","Classe SOLAS"],a:1},
-  {q:"Cosa significa 'PAN PAN' in una chiamata radio?",opts:["Emergenza grave (Distress)","Urgenza","Sicurezza"],a:1},
-  {q:"Quale intervallo di temperatura è ammesso per il VHF?",opts:["-10°C a +50°C","-20°C a +60°C","0°C a +40°C"],a:1},
-  {q:"Cosa si intende per 'Seelonce'?",opts:["Conferma di ricezione","Richiesta di silenzio radio","Chiamata di prova"],a:1},
-  {q:"Quale è il centro VTS attivo per la Laguna Veneta?",opts:["Roma Radio","Venezia","Trieste Radio"],a:1},
-  {q:"Cosa è vietato durante un temporale?",opts:["Usare il GPS","Usare il VHF senza antenna","Trasmettere con il VHF"],a:2},
-  {q:"Quale standard garantisce l'impermeabilità IPX7?",opts:["Resistenza a pioggia leggera","Immersione fino a 1 metro per 30 minuti","Protezione da spruzzi"],a:1},
-  {q:"Cosa è incluso nel messaggio di un DSC Distress?",opts:["Numero di persone a bordo","Identità MMSI e posizione","Tipo di carico trasportato"],a:1},
-  {q:"Quale canale usa il VTS di Venezia come primario?",opts:["Canale 11","Canale 9","Canale 13"],a:1},
-  {q:"Cosa si regola con la manopola SQL?",opts:["Volume audio","Soglia del rumore di fondo","Potenza di trasmissione"],a:1},
-  {q:"Qual è la potenza tipica erogabile da un apparecchio VHF marino fisso?",opts:["Solo 5 W in ogni caso","Variabile da 10 W a 100 W","Commutabile tra 1 W (bassa) e 25 W (massima)"],a:2},
-  {q:"Cosa indica il codice fonetico 'Quebec'?",opts:["Q","K","C"],a:0},
-  {q:"Quale funzione permette di monitorare tre canali?",opts:["Dual Watch","Tri-watch","Priority Scan"],a:1},
-  {q:"Cosa è necessario per una chiamata DSC Individuale?",opts:["Conoscere il MMSI del destinatario","Trasmettere sul canale 16","Autorizzazione della Capitaneria"],a:0},
-  {q:"Quale è il MID della Croazia?",opts:["247","238","211"],a:1},
-  {q:"Cosa significa 'SECURITÉ' in una chiamata radio?",opts:["Distress","Safety","Urgency"],a:1},
-  {q:"Quante cifre ha un MMSI?",opts:["6 cifre","9 cifre","12 cifre"],a:1},
-  {q:"Cosa si deve fare dopo aver ricevuto un ACK per una chiamata Routine?",opts:["Spegnere la radio","Comunicare in fonia sul canale assegnato","Ripetere la chiamata DSC"],a:1},
-  {q:"Quale è il primo passo per inviare un Distress DSC generico?",opts:["Premere brevemente il tasto DISTRESS","Tenere premuto il tasto DISTRESS per 3-5 secondi","Selezionare la natura dell'emergenza"],a:1},
-  {q:"Cosa è vietato sul canale 70?",opts:["Trasmissioni DSC","Trasmissioni in fonia","Ricezione di chiamate di Safety"],a:1},
-  {q:"Quale organizzazione sviluppa gli standard NMEA?",opts:["International Maritime Organization","National Marine Electronics Association","Global Maritime Distress and Safety System"],a:1},
-  {q:"Cosa si intende per 'ACK' in una chiamata DSC?",opts:["All Clear Call","Acknowledgement (conferma di ricezione)","Activation Key Code"],a:1},
-  {q:"Quale è il tempo massimo di trasmissione continua per evitare il time-out?",opts:["1 minuto","5 minuti","10 minuti"],a:1},
-  {q:"Cosa è essenziale per il collegamento GPS a un VHF?",opts:["Batteria dedicata","Interfaccia NMEA","Antenna direttiva"],a:1},
-  {q:"Quale comando si usa per passare da 25W a 1W?",opts:["Tasto HI/LO","Manopola SQL","Tasto AQUA"],a:0},
-  {q:"Cosa indica l'icona GPS lampeggiante sul display?",opts:["Dati GPS validi ricevuti","Nessun dato GPS ricevuto","Errore nel calcolo della posizione"],a:1},
-  {q:"Quale zona GMDSS richiede sistemi satellitari INMARSAT?",opts:["Area A1","Area A2","Area A3"],a:2},
-  {q:"Cosa significa 'MAYDAY' in una chiamata radio?",opts:["Urgenza medica","Distress (pericolo grave e imminente)","Avviso di sicurezza"],a:1},
-  {q:"Quale è la procedura corretta per una chiamata di Safety?",opts:["Iniziare con 'PAN PAN'","Iniziare con 'SECURITÉ'","Inviare solo DSC senza fonia"],a:1},
-  {q:"Cosa si deve regolare per ottimizzare la ricezione di segnali deboli?",opts:["Aumentare il livello SQL","Ridurre il livello SQL","Attivare il Dual Watch"],a:1},
-  {q:"Quale è la frequenza di chiamata DSC in MF?",opts:["2.182 kHz","2.187.5 kHz","4.125 kHz"],a:1},
-  {q:"Cosa è incluso nella Marine Equipment Directive (MED)?",opts:["Standard di addestramento per operatori","Requisiti di sicurezza per apparecchiature marittime","Procedure di soccorso SAR"],a:1},
-  {q:"Quale tasto permette l'accesso rapido al canale 16?",opts:["Tasto MENU","Tasto 16/C","Tasto DISTRESS"],a:1},
-  {q:"Cosa si intende per 'orizzonte ottico' nelle comunicazioni VHF?",opts:["Distanza massima teorica senza ostacoli","Area coperta da satelliti geostazionari","Zona entro 5 miglia dalla costa"],a:0},
-  {q:"Quale è il compito del VTS di Venezia?",opts:["Gestire le licenze radio","Fornire informazioni sul traffico e meteo","Assegnare i codici MMSI"],a:1},
-  {q:"Cosa è necessario per attivare la sezione DSC di un VHF?",opts:["Licenza di operatore","Memorizzazione del MMSI","Collegamento a un GPS esterno"],a:1},
-  {q:"Quale frase si usa per confermare la ricezione di un messaggio?",opts:["OVER","OUT","RECEIVED"],a:2},
-  {q:"Cosa causa la perdita di segnale in VHF?",opts:["Basse temperature","Ostacoli fisici e distanza","Uso del canale duplex"],a:1},
-  {q:"Quale è la tensione di alimentazione standard di un VHF?",opts:["24 V CC","12 V CC","220 V CA"],a:1},
-  {q:"Cosa si deve fare se il VHF è collegato a un impianto a 24V?",opts:["Collegarlo direttamente","Usare un riduttore di tensione","Impostare la potenza a 1W"],a:1},
-  {q:"Quale è lo scopo della funzione AquaQuake?",opts:["Eliminare l'acqua dalla griglia dell'altoparlante","Migliorare la ricezione GPS","Calibrare l'antenna"],a:0},
-  {q:"Cosa indica 'BUSY' sul display VHF?",opts:["Trasmissione in corso","Ricezione di un segnale o squelch aperto","Batteria in carica"],a:1},
-  {q:"Quale è la potenza di uscita audio esterna minima?",opts:["2 W","4.5 W","1 W"],a:1},
-  {q:"Cosa è essenziale per una trasmissione efficiente?",opts:["Cavo coassiale senza ossidazione","Uso di canali duplex","Alta potenza in ogni condizione"],a:0},
-  {q:"Quale documento contiene il Call Sign dell'imbarcazione?",opts:["Certificato SRC","Licenza di esercizio radioelettrica","Manuale del VHF"],a:1},
-  {q:"Cosa si intende per 'DSC Relay'?",opts:["Ripetizione di una chiamata DSC ricevuta","Chiamata DSC automatica ogni 4 minuti","Comunicazione tra due stazioni via satellite"],a:0},
-  {q:"Quale è la prima azione in caso di ricezione di un Distress?",opts:["Inviare un ACK","Arrestare l'allarme e restare in ascolto sul CH16","Contattare la stazione in difficoltà sul canale 70"],a:1},
-  {q:"Cosa è vietato nelle comunicazioni radio?",opts:["Usare il codice fonetico","Linguaggio indecente o blasfemo","Comunicazioni di routine sul canale 16"],a:1},
-  {q:"Quale è la frequenza di ricezione GLONASS?",opts:["1575.42 MHz","1602 MHz","1227.60 MHz"],a:1},
-  {q:"Cosa si deve fare prima di un temporale?",opts:["Aumentare la potenza di trasmissione","Scollegare alimentazione e antenna","Attivare il Dual Watch"],a:1},
-  {q:"Quale è la portata tipica VHF tra due taxi acquei?",opts:["5 miglia","10 miglia","20 miglia"],a:1},
-  {q:"Cosa significa 'NMEA Buffer'?",opts:["Interfaccia per memorizzazione temporanea di dati","Tipo di antenna GPS","Protocollo di emergenza"],a:0},
-  {q:"Quale apparato è obbligatorio per navi SOLAS?",opts:["VHF classe D","VHF classe A","VHF portatile"],a:1},
-  {q:"Cosa si usa per identificare una nave in fonia?",opts:["Codice MMSI","Call Sign","Numero di matricola"],a:1},
-  {q:"Quale è il tempo minimo per tenere premuto il tasto DISTRESS?",opts:["1 secondo","3-5 secondi","10 secondi"],a:1},
-  {q:"Cosa è necessario per le comunicazioni DSC a lungo raggio?",opts:["Certificato LRC","Certificato SRC","Licenza di operatore ROC"],a:0},
-  {q:"Quale canale è utilizzato dai Servizi Ausiliari a Venezia?",opts:["Canale 11","Canale 13","Canale 9"],a:1},
-  {q:"Cosa si deve regolare per migliorare la leggibilità del display?",opts:["Contrasto","Squelch","Volume"],a:0},
-  {q:"Quale è la corretta procedura per una chiamata radio di Routine?",opts:["Iniziare con 'MAYDAY'","Nominare la stazione chiamata 3 volte","Usare solo il canale 70"],a:1},
-  {q:"Cosa indica l'acronimo 'EPIRB'?",opts:["Emergency Position Indicating Radio Beacon","Electronic Position and Identification Radio Band","Emergency Portable International Rescue Beacon"],a:0}
+  {q:"Che cosa significa l'acronimo GMDSS?",opts:["Global Marine Data Satellite System","General Marine Digital Security System","Global Maritime Distress and Safety System"],a:2,
+   explanation:"GMDSS = Global Maritime Distress and Safety System (Sistema Mondiale di Soccorso e Sicurezza in Mare). È il sistema internazionale, adottato dall'IMO, che coordina comunicazioni di emergenza tramite radio terrestri e satellitari."},
+
+  {q:"Il GMDSS è un sistema progettato per:",opts:["Solo comunicazioni commerciali","Controllare la navigazione automatica","Gestire comunicazioni di soccorso e sicurezza in mare"],a:2,
+   explanation:"Il GMDSS nasce per garantire che una nave in pericolo possa lanciare l'allarme e ricevere soccorso ovunque si trovi, integrando comunicazioni di distress, urgenza e sicurezza."},
+
+  {q:"Il GMDSS si applica principalmente a:",opts:["Solo alle navi militari","Solo alle piccole unità da diporto","Naviglio maggiore (>300 tsl)"],a:2,
+   explanation:"La convenzione SOLAS impone il GMDSS alle navi mercantili sopra le 300 tonnellate di stazza lorda (tsl) e a tutte le navi passeggeri, indipendentemente dalla stazza."},
+
+  {q:"Quale tecnologia è alla base del GMDSS?",opts:["Wi-Fi marino","HF solo fonia","DSC (Digital Selective Calling)"],a:2,
+   explanation:"Il DSC (Digital Selective Calling, Chiamata Selettiva Digitale) permette di inviare automaticamente un allarme digitale contenente identità e posizione della nave, senza dover parlare."},
+
+  {q:"Quale canale è dedicato alle chiamate DSC in VHF?",opts:["Ch.13","Ch.70","Ch.16"],a:1,
+   explanation:"Il canale 70 (156.525 MHz) è riservato esclusivamente alle chiamate digitali DSC in VHF. Su di esso è vietata la fonia."},
+
+  {q:"Il canale 16 nel GMDSS è usato per:",opts:["Chiamate e soccorso in fonia","Solo chiamate interne","Trasmissioni DSC"],a:0,
+   explanation:"Il canale 16 (156.800 MHz) è il canale internazionale di chiamata e soccorso in fonia (voce). Dopo un allarme DSC ci si sposta qui per comunicare a voce."},
+
+  {q:"In Area A1 la copertura è assicurata da:",opts:["Satelliti INMARSAT","Stazione costiera con DSC su VHF","Ripetitori terrestri VOR"],a:1,
+   explanation:"L'Area A1 è la zona coperta in VHF/DSC da almeno una stazione costiera. È l'area più vicina alla costa nel GMDSS."},
+
+  {q:"La portata tipica dell'Area A1 è:",opts:["150-200 Mn","20-40 Mn","1-5 Mn"],a:1,
+   explanation:"L'Area A1 si estende tipicamente per 20-40 miglia nautiche (Mn) dalla costa, corrispondente alla portata utile del VHF verso una stazione costiera."},
+
+  {q:"In Area A3 si comunicano distress principalmente tramite:",opts:["Sistemi satellitari","Solo AIS","HF in fonia"],a:0,
+   explanation:"L'Area A3 copre le zone tra circa 70°N e 70°S non coperte da A1/A2, e si affida ai satelliti geostazionari (es. INMARSAT) per le comunicazioni di soccorso."},
+
+  {q:"Il GMDSS prevede l'ascolto continuo:",opts:["Ch.16 + Ch.70","Solo Ch.70","Solo Ch.16"],a:0,
+   explanation:"Il VHF DSC vigila costantemente sia il canale 70 (allarmi digitali DSC) sia il canale 16 (chiamate in fonia), garantendo la ricezione di qualsiasi tipo di allarme."},
+
+  {q:"Un VHF marino è un apparato:",opts:["Solo ricevitore","Solo trasmettitore","Ricetrasmettitore"],a:2,
+   explanation:"Il VHF è un ricetrasmettitore (transceiver): può sia trasmettere sia ricevere, ma non contemporaneamente sullo stesso canale (funzionamento in simplex premendo il PTT)."},
+
+  {q:"La potenza massima di un VHF fisso è:",opts:["50W","25W","5W"],a:1,
+   explanation:"Un VHF marino fisso eroga al massimo 25 W in alta potenza, commutabili a 1 W in bassa potenza per le comunicazioni ravvicinate."},
+
+  {q:"Il comando HIGH/LOW serve a:",opts:["Regolare la potenza di trasmissione","Cambiare canale rapidamente","Regolare la squelch"],a:0,
+   explanation:"Il tasto HIGH/LOW (o HI/LO) commuta la potenza di trasmissione tra alta (25 W, lunga distanza) e bassa (1 W, comunicazioni vicine, per non intasare le frequenze)."},
+
+  {q:"La funzione DUAL WATCH permette:",opts:["Aumento di potenza","Ricezione solo DSC","Ascolto alternato tra due canali"],a:2,
+   explanation:"Il Dual Watch permette di monitorare alternativamente il canale 16 e un secondo canale scelto, dando priorità al 16 in caso di traffico di emergenza."},
+
+  {q:"Il tasto Distress:",opts:["Non esiste nei VHF moderni","È libero e immediato","È protetto da coperchio"],a:2,
+   explanation:"Il tasto DISTRESS (rosso) è protetto da uno sportellino/coperchio per evitare attivazioni accidentali. Va tenuto premuto 3-5 secondi per lanciare l'allarme."},
+
+  {q:"Chi ascolta costantemente il Ch.70?",opts:["La sezione DSC","Il GPS","La sezione fonia"],a:0,
+   explanation:"All'interno del VHF, la sezione DSC è un ricevitore dedicato che sorveglia in permanenza il canale 70 per intercettare eventuali chiamate digitali."},
+
+  {q:"Il microtelefono serve a:",opts:["Misurare distanza","Memorizzare MMSI","Convertire la voce in segnale elettrico"],a:2,
+   explanation:"Il microtelefono contiene il microfono che trasforma la voce in segnale elettrico da trasmettere, e integra il tasto PTT (Push To Talk) per attivare la trasmissione."},
+
+  {q:"Gli apparati VHF funzionano tipicamente a:",opts:["48V","110V","12V"],a:2,
+   explanation:"I VHF marini di bordo sono alimentati tipicamente a 12 V in corrente continua, tensione standard degli impianti elettrici delle imbarcazioni."},
+
+  {q:"Se a bordo abbiamo solo 24V si usa:",opts:["Una batteria da 1.5V","Un riduttore di tensione","Un inverter"],a:1,
+   explanation:"Con un impianto a 24 V serve un riduttore (convertitore DC/DC) che porti la tensione a 12 V, evitando di danneggiare il VHF. L'inverter invece produce corrente alternata, non necessaria."},
+
+  {q:"La sezione DSC:",opts:["Amplifica la potenza","Decodifica messaggi digitali","Serve solo in porto"],a:1,
+   explanation:"La sezione DSC codifica e decodifica i messaggi digitali (allarmi, chiamate individuali) trasmessi sul canale 70, mostrandone il contenuto sul display."},
+
+  {q:"Le onde VHF sono:",opts:["Ionizzanti","Acustiche","Elettromagnetiche non ionizzanti"],a:2,
+   explanation:"Le onde radio VHF (Very High Frequency, 30-300 MHz) sono onde elettromagnetiche non ionizzanti: non hanno energia sufficiente a ionizzare la materia, quindi non sono dannose come i raggi X."},
+
+  {q:"La portata VHF è:",opts:["Ottica","Illimitata","≤1 km"],a:0,
+   explanation:"La portata VHF è 'ottica' (a vista): le onde si propagano in linea retta e la distanza dipende dall'altezza delle antenne e dalla curvatura terrestre, non attraversando ostacoli."},
+
+  {q:"L'altezza antenna:",opts:["Non influisce","Influenza la portata","Blocca GPS"],a:1,
+   explanation:"Più l'antenna è alta, più lontano è l'orizzonte radio: aumentando l'altezza si estende la portata utile del collegamento VHF."},
+
+  {q:"Le antenne VHF di bordo sono:",opts:["Direzionali strette","HF monopolo","Omnidirezionali"],a:2,
+   explanation:"Le antenne VHF nautiche sono omnidirezionali: irradiano e ricevono in tutte le direzioni orizzontali, indispensabile perché la nave cambia continuamente rotta."},
+
+  {q:"Il ROS indica:",opts:["Velocità nave","Qualità collegamento antenna-radio","Numero canali"],a:1,
+   explanation:"Il ROS (Rapporto d'Onda Stazionaria, in inglese SWR) misura quanto bene l'antenna è accordata con la radio: indica quanta energia viene irradiata rispetto a quella riflessa indietro."},
+
+  {q:"ROS > 3:",opts:["Perdita potenza e rischio danni","Massima efficienza","Nessun problema"],a:0,
+   explanation:"Un ROS superiore a 3 significa che molta potenza viene riflessa verso il trasmettitore: si ha perdita di segnale irradiato e rischio di danneggiare lo stadio finale della radio."},
+
+  {q:"Il cavo antenna è:",opts:["Doppino","Coassiale","Fibra ottica"],a:1,
+   explanation:"Il collegamento antenna-radio usa un cavo coassiale, con un conduttore centrale e una schermatura esterna, che minimizza le perdite e le interferenze."},
+
+  {q:"Connettore tipico:",opts:["USB","RJ45","PL"],a:2,
+   explanation:"Il connettore standard per le antenne VHF marine è il PL (PL-259, con presa SO-239), robusto e adatto alle radiofrequenze."},
+
+  {q:"Antenna tarata male:",opts:["Migliora segnale","Aumenta ROS","Stabilizza frequenza"],a:1,
+   explanation:"Un'antenna non correttamente accordata (tarata male) provoca un aumento del ROS, con conseguente perdita di potenza irradiata e possibili danni al trasmettitore."},
+
+  {q:"Antenna chiusa alla continua:",opts:["Amplifica segnale","Scarica cariche su massa","Riduce potenza"],a:1,
+   explanation:"Un'antenna 'chiusa alla continua' (cortocircuitata in DC verso massa) scarica a terra le cariche elettrostatiche accumulate, proteggendo l'apparato da scariche e fulmini."},
+
+  {q:"Il GPS fornisce:",opts:["Latitudine e longitudine","Solo rotta","Solo velocità"],a:0,
+   explanation:"Il GPS (Global Positioning System) fornisce le coordinate geografiche di posizione (latitudine e longitudine); da queste derivano anche rotta e velocità come dati secondari."},
+
+  {q:"GPS integrato nel VHF:",opts:["Invia posizione nei messaggi DSC","Mostra marea","Sostituisce AIS"],a:0,
+   explanation:"Un GPS integrato o collegato al VHF permette di inserire automaticamente la posizione nei messaggi DSC, fondamentale in caso di allarme di soccorso."},
+
+  {q:"In distress la posizione:",opts:["Non serve","È inserita automaticamente","Si comunica solo a voce"],a:1,
+   explanation:"Nell'allarme DSC di distress la posizione GPS viene inserita automaticamente insieme all'MMSI, permettendo ai soccorsi di localizzare subito la nave."},
+
+  {q:"VHF riceve GPS tramite:",opts:["NMEA","Bluetooth","HDMI"],a:0,
+   explanation:"Il collegamento tra GPS e VHF avviene via protocollo NMEA (National Marine Electronics Association), lo standard di comunicazione tra strumenti elettronici nautici."},
+
+  {q:"DSC richiede:",opts:["Batteria esterna","Inserire MMSI","Cambio antenna"],a:1,
+   explanation:"Per usare il DSC occorre aver memorizzato nell'apparato il proprio MMSI (Maritime Mobile Service Identity), il numero che identifica univocamente la stazione radio della nave."},
+
+  {q:"MMSI identifica:",opts:["Il comandante","La batteria","La nave"],a:2,
+   explanation:"L'MMSI (Maritime Mobile Service Identity) è un codice di 9 cifre che identifica in modo univoco la stazione radio della nave nelle comunicazioni digitali DSC e AIS."},
+
+  {q:"Se la posizione non appare sul VHF:",opts:["Non influisce","È prescrizione da risolvere","È normale"],a:1,
+   explanation:"L'assenza della posizione sul VHF indica un problema di collegamento GPS: è una prescrizione da risolvere, perché in emergenza la posizione automatica è vitale."},
+
+  {q:"GPS senza display invia a:",opts:["Solo AIS","Solo EPIRB","VHF o plotter"],a:2,
+   explanation:"Un ricevitore GPS 'cieco' (senza schermo proprio) trasmette i dati di posizione via NMEA ad altri apparati come il VHF o il chartplotter, che li visualizzano e utilizzano."},
+
+  {q:"Il GPS è fondamentale soprattutto:",opts:["Solo con mare calmo","Nel distress","Solo in porto"],a:1,
+   explanation:"Il GPS è fondamentale nel distress: fornisce automaticamente le coordinate esatte alle unità di soccorso, riducendo drasticamente i tempi di ricerca."},
+
+  {q:"Attivazione DSC richiede:",opts:["Antenna diversa","Memorizzazione MMSI","Cambio canale"],a:1,
+   explanation:"Per attivare le funzioni DSC bisogna prima memorizzare l'MMSI nell'apparato; questa operazione è generalmente irreversibile per l'utente comune."},
+
+  {q:"Un MMSI nave ha:",opts:["9 cifre","6 cifre","12 cifre"],a:0,
+   explanation:"L'MMSI di una nave è composto da 9 cifre, di cui le prime tre (MID) identificano il Paese di registrazione."},
+
+  {q:"MID dell'Italia:",opts:["111","238","247"],a:2,
+   explanation:"Il MID (Maritime Identification Digits) è il codice di 3 cifre che identifica la nazionalità nell'MMSI: per l'Italia è 247."},
+
+  {q:"MMSI costiero inizia con:",opts:["98","00","11"],a:1,
+   explanation:"Le stazioni costiere hanno un MMSI che inizia con '00' seguito dal MID: la struttura è 00 + MID + 4 cifre (es. 002470135 per una stazione italiana)."},
+
+  {q:"Call Sign italiano inizia con:",opts:["V (Victor)","I (India)","A (Alfa)"],a:1,
+   explanation:"Il Call Sign (nominativo internazionale) delle navi italiane inizia con la lettera 'I' (India nell'alfabeto fonetico), assegnata all'Italia dall'ITU."},
+
+  {q:"Call Sign identifica:",opts:["Rotta","Stazione radio di bordo","Comandante"],a:1,
+   explanation:"Il Call Sign (nominativo internazionale) identifica la stazione radio dell'imbarcazione ed è usato principalmente nelle comunicazioni in fonia."},
+
+  {q:"Navi figlie usano MMSI:",opts:["98...","00...","50..."],a:0,
+   explanation:"Le unità associate a una nave madre (navi 'figlie', come lance o tender) usano un MMSI che inizia con '98' seguito dal MID della nazione."},
+
+  {q:"Trieste Radio MMSI:",opts:["002470135","002387010","247000019"],a:0,
+   explanation:"Trieste Radio è una stazione costiera italiana, quindi il suo MMSI inizia con 00 + MID italiano (247): 002470135."},
+
+  {q:"VTS Venezia MMSI:",opts:["002470135","247111999","247000019"],a:2,
+   explanation:"Il VTS (Vessel Traffic Service) di Venezia usa l'MMSI 247000019, con il MID italiano 247."},
+
+  {q:"Rijeka Radio MMSI:",opts:["002387010","247000019","002470135"],a:0,
+   explanation:"Rijeka (Fiume) Radio è una stazione costiera croata: il suo MMSI inizia con 00 + MID croato (238): 002387010."},
+
+  {q:"MMSI identifica:",opts:["L'armatore","Il singolo VHF","La nave"],a:2,
+   explanation:"L'MMSI è associato alla nave (alla sua stazione radio), non all'armatore né a un singolo apparecchio: identifica univocamente l'unità nelle chiamate digitali."},
+
+  {q:"Ch.16 è per:",opts:["AIS","Chiamata e soccorso","Port operations"],a:1,
+   explanation:"Il canale 16 (156.800 MHz) è il canale internazionale di chiamata e soccorso in fonia, da mantenere sempre in ascolto."},
+
+  {q:"Ch.70 è per:",opts:["AIS","Fonia","DSC digitale"],a:2,
+   explanation:"Il canale 70 (156.525 MHz) è riservato al DSC (Digital Selective Calling): trasmette solo dati digitali, mai voce."},
+
+  {q:"Simplex:",opts:["Solo ascolto","Nave-nave","Nave-costiera"],a:1,
+   explanation:"In simplex si usa un'unica frequenza per trasmettere e ricevere in modo alternato (uno parla, l'altro ascolta): tipico delle comunicazioni nave-nave."},
+
+  {q:"Duplex:",opts:["Nave-nave","Nave-costiera","Solo piloti"],a:1,
+   explanation:"In duplex si usano due frequenze distinte (una per trasmettere, una per ricevere), consentendo comunicazioni simultanee: tipico dei collegamenti nave-stazione costiera."},
+
+  {q:"Ch.86 è:",opts:["Duplex","Simplex","Solo AIS"],a:0,
+   explanation:"Il canale 86 è un canale duplex, usato per comunicazioni nave-costiera (ad esempio con i VTS) su due frequenze separate."},
+
+  {q:"Ch.13 è:",opts:["DSC","Servizi ausiliari","EPIRB"],a:1,
+   explanation:"Il canale 13 è dedicato ai servizi ausiliari, alle comunicazioni di sicurezza per la manovra nave-nave (bridge-to-bridge) e alle operazioni portuali."},
+
+  {q:"Capitaneria Venezia usa:",opts:["Ch.14","Ch.05","Ch.11"],a:2,
+   explanation:"La Capitaneria di Porto di Venezia opera sul canale 11 per le comunicazioni di servizio."},
+
+  {q:"Capitaneria Chioggia usa:",opts:["Ch.14","Ch.09","Ch.11"],a:0,
+   explanation:"La Capitaneria di Porto di Chioggia utilizza il canale 14 per le proprie comunicazioni."},
+
+  {q:"Trieste Radio ascolta:",opts:["Ch.13","Ch.16","Ch.70"],a:1,
+   explanation:"Trieste Radio, come stazione costiera, mantiene l'ascolto sul canale 16, il canale internazionale di chiamata e soccorso."},
+
+  {q:"VTS Venezia lavora su:",opts:["Ch.70","Ch.9","Ch.86"],a:1,
+   explanation:"Il VTS (Vessel Traffic Service) di Venezia utilizza il canale 9 come canale di lavoro primario per la gestione del traffico."},
+
+  {q:"Distress si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:0,
+   explanation:"Il messaggio di soccorso (Distress), per pericolo grave e imminente, si introduce ripetendo tre volte 'MAYDAY' (dal francese m'aider, aiutatemi)."},
+
+  {q:"Urgency si introduce con:",opts:["SECURITE'","PAN PAN","MAYDAY"],a:1,
+   explanation:"Il messaggio di urgenza si introduce con 'PAN PAN' (dal francese panne, guasto), ripetuto tre volte: segnala una situazione grave ma non un pericolo imminente di vita."},
+
+  {q:"Safety si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:2,
+   explanation:"Il messaggio di sicurezza si introduce con 'SECURITÉ' (francese, sicurezza), ripetuto tre volte: annuncia avvisi meteo o pericoli per la navigazione."},
+
+  {q:"Dopo DSC Distress si passa a:",opts:["Ch.13","Ch.16","Ch.70"],a:1,
+   explanation:"Dopo aver lanciato l'allarme DSC (sul canale 70), si passa al canale 16 per comunicare a voce il messaggio di MAYDAY dettagliato."},
+
+  {q:"Messaggio MAYDAY deve essere:",opts:["In codice","Veloce","Lento e chiaro"],a:2,
+   explanation:"Il MAYDAY va pronunciato lentamente e chiaramente, perché chi ascolta deve poter annotare tutte le informazioni vitali (posizione, natura emergenza, persone a bordo)."},
+
+  {q:"Distress DSC ripete ogni:",opts:["1 min","1 ora","4-5 min"],a:2,
+   explanation:"Se non riceve conferma (ACK), l'allarme DSC di distress viene ripetuto automaticamente ogni 4-5 minuti finché una stazione non risponde."},
+
+  {q:"MAYDAY include:",opts:["Solo nome nave","Posizione + persone a bordo","Solo stato mare"],a:1,
+   explanation:"Il messaggio MAYDAY deve includere identità della nave, posizione, natura dell'emergenza, numero di persone a bordo e tipo di assistenza richiesta."},
+
+  {q:"Specificare natura distress:",opts:["Premendo Distress lungo/breve","Accendere AIS","Cambiare canale"],a:0,
+   explanation:"La natura dell'emergenza si può selezionare dal menu DSC prima dell'invio; una pressione breve del tasto Distress lancia un allarme generico, mentre tenendolo premuto (con eventuale selezione) si specifica la causa."},
+
+  {q:"Esempio natura distress:",opts:["Man Over Board","Vento forte","Porto chiuso"],a:0,
+   explanation:"Tra le nature di distress selezionabili nel DSC c'è il 'Man Over Board' (uomo in mare), oltre a incendio, falla, affondamento, collisione, ecc."},
+
+  {q:"Dopo invio distress non si deve:",opts:["Ascoltare","Stare su Ch.16","Spegnere radio"],a:2,
+   explanation:"Dopo aver inviato un distress non si deve mai spegnere la radio: bisogna restare in ascolto sul canale 16 per ricevere la risposta dei soccorsi."},
+
+  {q:"Ricevuto Distress DSC:",opts:["NON dare ACK","Ignorare","Dare ACK"],a:0,
+   explanation:"Una nave che riceve un distress DSC non deve dare l'ACK (l'acknowledgement spetta alla stazione costiera/SAR): deve solo restare in ascolto sul canale 16 per non interferire."},
+
+  {q:"Dopo ricezione distress si resta su:",opts:["Ch.13","Ch.70","Ch.16"],a:2,
+   explanation:"Ricevuto un distress, si zittisce l'allarme e ci si mette in ascolto sul canale 16, pronti ad assistere ma senza intervenire se non necessario."},
+
+  {q:"Distress Relay:",opts:["Fine trasmissione","Messaggio di routine","Rilancia distress se costa non risponde"],a:2,
+   explanation:"Il Distress Relay (rilancio del soccorso) è la ritrasmissione di un allarme di distress in favore di un'altra nave, quando si teme che la stazione costiera non l'abbia ricevuto."},
+
+  {q:"Annullare falso distress:",opts:["Ignorare","Spegnere/riaccendere + messaggio","Solo cambiare canale"],a:1,
+   explanation:"Un falso allarme va sempre cancellato: si spegne e riaccende la radio per fermare la ripetizione e poi si annulla a voce sul canale 16, per non impegnare inutilmente i soccorsi."},
+
+  {q:"Annullamento inizia con:",opts:["PAN PAN","SECURITY CALL","ALL STATIONS"],a:2,
+   explanation:"L'annullamento di un falso distress inizia con 'ALL STATIONS' (a tutte le stazioni), ripetuto tre volte, per raggiungere chiunque abbia ricevuto il falso allarme."},
+
+  {q:"Dopo ALL STATIONS si dice:",opts:["OK","THIS IS + call sign + MMSI","STOP"],a:1,
+   explanation:"Dopo 'ALL STATIONS' ci si identifica con 'THIS IS' seguito dal nome della nave, dal Call Sign e dall'MMSI, per far sapere chi sta annullando l'allarme."},
+
+  {q:"Nel cancel distress si indica:",opts:["Ora UTC","Temperatura","Velocità"],a:0,
+   explanation:"Nell'annullamento del distress si indica l'ora UTC (tempo universale coordinato) del falso allarme, così le stazioni possono collegarlo alla chiamata errata ricevuta."},
+
+  {q:"ACK al Distress può darlo:",opts:["Stazione costiera/SAR","Pesca locale","Qualsiasi nave"],a:0,
+   explanation:"L'ACK (conferma di ricezione) a un distress DSC spetta alle stazioni costiere o ai centri SAR (Search And Rescue), che hanno il compito di coordinare i soccorsi."},
+
+  {q:"Durante emergenza:",opts:["Lasciare libero Ch.16","Cambiare canale spesso","Parlare sempre"],a:0,
+   explanation:"Durante un'emergenza in corso occorre lasciare libero il canale 16 per il traffico di soccorso, evitando comunicazioni non essenziali che potrebbero interferire."},
+
+  {q:"OVER significa:",opts:["Comunicazione conclusa","Passo, attendo risposta","Ripetere"],a:1,
+   explanation:"'OVER' (passo) indica che si è finito di parlare e si attende la risposta dell'interlocutore. Non chiude la comunicazione, che termina invece con 'OUT'."},
+
+  {q:"Quale dispositivo trasmette segnale satellitare di soccorso?",opts:["GPS","EPIRB","AIS"],a:1,
+   explanation:"L'EPIRB (Emergency Position Indicating Radio Beacon) è la radioboa di emergenza che, attivata, trasmette via satellite (sistema Cospas-Sarsat) la posizione e l'identità della nave in pericolo."},
+
+  {q:"Quale dispositivo localizza MOB via AIS?",opts:["NAVTEX","AIS-SART","VHF portatile"],a:1,
+   explanation:"L'AIS-SART (AIS Search And Rescue Transmitter) trasmette la posizione di un naufrago o di una scialuppa tramite il sistema AIS, rendendola visibile sui plotter delle navi vicine."},
+
+  {q:"Il servizio VTS fornisce:",opts:["Solo ormeggio","Previsioni maree","Informazioni traffico e sicurezza"],a:2,
+   explanation:"Il VTS (Vessel Traffic Service) è un servizio di controllo del traffico marittimo che fornisce informazioni su traffico, meteo e sicurezza nelle aree ad alta densità di navi."},
+
+  {q:"Chi coordina SAR?",opts:["MRCC","VTS","Pilota porto"],a:0,
+   explanation:"Il coordinamento delle operazioni di ricerca e soccorso spetta all'MRCC (Maritime Rescue Coordination Centre), in Italia gestito dalla Guardia Costiera."},
+
+  {q:"Se ricevi MAYDAY e costa non risponde:",opts:["Distress Relay","Aspetti 30 min","Ignori"],a:0,
+   explanation:"Se ricevi un MAYDAY e nessuna stazione costiera risponde, devi effettuare un Distress Relay, ritrasmettendo l'allarme per conto della nave in pericolo."},
+
+  {q:"Per identificare nave in fonia:",opts:["Nome nave + Call Sign + MMSI","Solo nome","Numero persone"],a:0,
+   explanation:"Per identificarsi correttamente in fonia si comunicano nome della nave, Call Sign (nominativo internazionale) ed eventualmente l'MMSI."},
+
+  {q:"Collisione senza feriti:",opts:["SECURITE'","MAYDAY","PAN PAN"],a:2,
+   explanation:"Una collisione senza pericolo immediato per la vita è una situazione di urgenza: si usa il 'PAN PAN'. Diventerebbe MAYDAY solo con pericolo grave e imminente per persone o nave."},
+
+  {q:"Oggetto pericoloso alla deriva:",opts:["PAN PAN","MAYDAY","SECURITE'"],a:2,
+   explanation:"Segnalare un oggetto pericoloso alla deriva è un avviso di sicurezza per la navigazione altrui: si usa 'SECURITÉ'."},
+
+  {q:"NAVTEX trasmette:",opts:["Idrografia","Posizione nave","Avvisi meteo e sicurezza"],a:2,
+   explanation:"Il NAVTEX (Navigational Telex) è un sistema che trasmette automaticamente su stampante/display avvisi meteorologici, avvisi ai naviganti e informazioni di sicurezza (MSI)."},
+
+  {q:"VHF portatile deve avere:",opts:["Solo 9","Solo 16","Ch.16 e Ch.70"],a:2,
+   explanation:"Un VHF portatile conforme deve disporre almeno del canale 16 (soccorso in fonia) e del canale 70 (DSC), per garantire le funzioni essenziali di sicurezza."},
+
+  {q:"Distanza VHF taxi acquei:",opts:["100 Mn","1 Mn","~10 Mn"],a:2,
+   explanation:"Tra due unità come i taxi acquei, con antenne basse, la portata VHF pratica è di circa 10 miglia nautiche, limitata dall'orizzonte ottico."},
+
+  {q:"Ch.13 serve per:",opts:["Soccorso","Servizi portuali","Manovra e sicurezza"],a:2,
+   explanation:"Il canale 13 è dedicato alle comunicazioni di manovra e sicurezza tra navi (bridge-to-bridge), per coordinare incroci, sorpassi e manovre in acque ristrette."},
+
+  {q:"Comunicazioni devono essere:",opts:["Conversazionali","Brevi, chiare, senza frasi inutili","In dialetto"],a:1,
+   explanation:"Le comunicazioni radio devono essere brevi, chiare ed essenziali, per non impegnare i canali più del necessario e garantire comprensione immediata."},
+
+  {q:"Voce deve essere:",opts:["Gridata","Velocissima","Scandita e costante"],a:2,
+   explanation:"La voce deve essere scandita, con ritmo costante e tono normale: gridare distorce il segnale e parlare veloce compromette la comprensione."},
+
+  {q:"Chiusura comunicazione:",opts:["OVER","FINITO","OUT"],a:2,
+   explanation:"'OUT' (chiudo/termine) segnala la fine definitiva della comunicazione, senza attesa di risposta. Non si usa mai insieme a 'OVER'."},
+
+  {q:"Passo la parola:",opts:["OVER","OUT","GO"],a:0,
+   explanation:"'OVER' (passo) si usa per cedere la parola all'interlocutore attendendo la sua risposta."},
+
+  {q:"ROS si misura con:",opts:["Voltmetro","ROSmeter","Tester"],a:1,
+   explanation:"Il ROS (Rapporto d'Onda Stazionaria) si misura con un ROSmetro (SWR meter), strumento inserito tra radio e antenna per verificare l'accordo dell'impianto."},
+
+  {q:"DSC Routine Call richiede:",opts:["Call Sign","MMSI destinatario","Niente"],a:1,
+   explanation:"Per una chiamata DSC di routine indirizzata a una specifica stazione occorre conoscere l'MMSI del destinatario, che identifica chi si vuole contattare."},
+
+  {q:"Se GPS scollegato:",opts:["Radio non funziona","DSC non inserisce posizione","Trasmette solo 25W"],a:1,
+   explanation:"Se il GPS è scollegato, la radio funziona regolarmente in fonia ma il DSC non può inserire automaticamente la posizione, che andrà eventualmente immessa a mano."},
+
+  {q:"Incendio a bordo:",opts:["SECURITE'","MAYDAY FIRE","PAN PAN"],a:1,
+   explanation:"Un incendio a bordo è un pericolo grave e imminente per persone e nave: si lancia un MAYDAY, specificando la natura 'FIRE' (incendio)."},
+
+  {q:"Cosa significa l'acronimo GMDSS?",opts:["Global Maritime Distress and Safety System","General Marine Digital Satellite Service","Global Marine Distress Signaling Standard"],a:0,
+   explanation:"GMDSS = Global Maritime Distress and Safety System, il sistema mondiale di soccorso e sicurezza in mare basato su comunicazioni terrestri e satellitari."},
+
+  {q:"Qual è la frequenza di trasmissione DSC in VHF?",opts:["156.800 MHz (canale 16)","156.525 MHz (canale 70)","156.650 MHz (canale 13)"],a:1,
+   explanation:"Il DSC in VHF opera sul canale 70, corrispondente alla frequenza 156.525 MHz, riservata alle sole chiamate digitali."},
+
+  {q:"Quale codice MID è assegnato all'Italia?",opts:["238","211","247"],a:2,
+   explanation:"Il MID (Maritime Identification Digits) dell'Italia è 247; il 238 è della Croazia e il 211 della Germania."},
+
+  {q:"Cosa indica un ROS (Rapporto d'Onda Stazionaria) pari a 1?",opts:["Antenna mal accordata con perdita di potenza","Trasmissione efficiente senza riflessi","Danneggiamento del cavo coassiale"],a:1,
+   explanation:"Un ROS pari a 1 (1:1) è l'ideale: significa perfetto accordo tra radio e antenna, con tutta la potenza irradiata e nessuna riflessione."},
+
+  {q:"Per le unità nella Laguna Veneta, l'autonomia minima della batteria del VHF deve essere:",opts:["1 ora","3 ore","6 ore"],a:1,
+   explanation:"Per le unità della Laguna Veneta la normativa prevede un'autonomia minima della batteria del VHF di 3 ore, per garantire comunicazioni anche senza alimentazione principale."},
+
+  {q:"Quale funzione permette di ascoltare contemporaneamente il canale 16 e un altro canale?",opts:["Dual Watch","Priority Scan","Tri-watch"],a:0,
+   explanation:"Il Dual Watch consente il monitoraggio alternato del canale 16 e di un secondo canale, dando comunque priorità al 16."},
+
+  {q:"Cosa trasmette automaticamente una chiamata DSC di Distress?",opts:["Solo la posizione GPS","MMSI e posizione GPS","Natura dell'emergenza e numero di persone a bordo"],a:1,
+   explanation:"Una chiamata DSC di distress trasmette automaticamente l'MMSI (identità della nave) e la posizione GPS con l'orario; la natura dell'emergenza è selezionabile ma non il numero di persone."},
+
+  {q:"Come è strutturato il MMSI di una stazione costiera?",opts:["MID + 6 cifre","00 + MID + 4 cifre","98 + MID + 3 cifre"],a:1,
+   explanation:"Le stazioni costiere hanno MMSI nella forma 00 + MID + 4 cifre (es. 002470135). Il prefisso '98' è invece riservato alle unità associate a una nave madre."},
+
+  {q:"Quale tasto è obbligatoriamente protetto da un coperchio?",opts:["Tasto 16/C","Tasto DISTRESS","Tasto Dual Watch"],a:1,
+   explanation:"Il tasto DISTRESS è protetto da uno sportellino a molla per evitare attivazioni accidentali di falsi allarmi di soccorso."},
+
+  {q:"Cosa si intende per zona A1 nel GMDSS?",opts:["Area con copertura satellitare INMARSAT","Area entro 20-40 mn da una stazione costiera VHF/DSC","Regioni polari oltre 70° di latitudine"],a:1,
+   explanation:"L'Area A1 è la zona costiera coperta in VHF/DSC da almeno una stazione costiera, con portata tipica di 20-40 miglia nautiche."},
+
+  {q:"Quale standard di comunicazione è utilizzato per interfacciare GPS e VHF?",opts:["MED","NMEA","DSC"],a:1,
+   explanation:"Lo standard NMEA (National Marine Electronics Association) definisce il protocollo con cui GPS, VHF, plotter e altri strumenti nautici si scambiano dati."},
+
+  {q:"Cosa si deve fare se si invia per errore un Distress DSC?",opts:["Inviare una chiamata di Safety sul canale 16","Spegnere il VHF, riaccenderlo e annullare sul canale 16 a voce","Attendere l'ACK della stazione costiera"],a:1,
+   explanation:"In caso di falso distress si spegne e riaccende il VHF per fermare la ripetizione automatica, poi si annulla a voce sul canale 16 iniziando con 'ALL STATIONS'."},
+
+  {q:"Quale frase si utilizza per terminare definitivamente una comunicazione radio?",opts:["OVER","OUT","ROGER"],a:1,
+   explanation:"'OUT' termina definitivamente la comunicazione senza attesa di risposta. 'OVER' significa 'passo' e 'ROGER' significa 'ricevuto'."},
+
+  {q:"Quale canale è dedicato alle comunicazioni di sicurezza per il traffico navale?",opts:["Canale 70","Canale 16","Canale 13"],a:2,
+   explanation:"Il canale 13 è dedicato alle comunicazioni di sicurezza nella manovra tra navi (bridge-to-bridge) e alle operazioni portuali."},
+
+  {q:"Cosa identifica il Call Sign?",opts:["La potenza massima della radio","L'identità internazionale dell'imbarcazione","La posizione GPS"],a:1,
+   explanation:"Il Call Sign (nominativo internazionale) identifica in modo univoco la stazione radio dell'imbarcazione a livello internazionale, assegnato dall'autorità nazionale."},
+
+  {q:"Per una chiamata DSC di Routine, chi invia l'ACK?",opts:["Tutte le navi in ascolto","Solo la stazione costiera","Il destinatario specifico"],a:2,
+   explanation:"In una chiamata DSC di routine indirizzata, è il destinatario specifico (identificato dall'MMSI) a inviare l'ACK di conferma."},
+
+  {q:"Quale potenza massima può erogare un VHF portatile?",opts:["25 W","5 W","10 W"],a:1,
+   explanation:"Un VHF portatile eroga al massimo 5 W, potenza inferiore ai 25 W dei fissi a causa dell'alimentazione a batteria e dell'antenna corta."},
+
+  {q:"Cosa causa un ROS elevato (>3)?",opts:["Cavo coassiale di alta qualità","Ossidazione dell'antenna o connettori","GPS non collegato"],a:1,
+   explanation:"Un ROS elevato è spesso causato da ossidazione o cattivo contatto nei connettori/antenna, che riflettono la potenza invece di irradiarla."},
+
+  {q:"Quale comando radio si usa per richiedere un controllo della trasmissione?",opts:["Seelonce","Radio Check","Received"],a:1,
+   explanation:"'Radio Check' è la richiesta di verifica della qualità della propria trasmissione (leggibilità e potenza) a un'altra stazione."},
+
+  {q:"Cosa significa l'acronimo ITU?",opts:["International Transport Union","International Telecommunication Union","Italian Telecommunications Unit"],a:1,
+   explanation:"ITU = International Telecommunication Union (Unione Internazionale delle Telecomunicazioni), l'agenzia ONU che regola frequenze, MID e nominativi a livello mondiale."},
+
+  {q:"Quale elemento è fondamentale per la portata radio in VHF?",opts:["Temperatura dell'acqua","Altezza delle antenne","Velocità della nave"],a:1,
+   explanation:"Essendo la propagazione VHF 'a vista', la portata dipende soprattutto dall'altezza delle antenne: più sono alte, più lontano è l'orizzonte radio."},
+
+  {q:"Cosa si trasmette con una chiamata DSC di Safety?",opts:["Richiesta di soccorso immediato","Avvisi meteorologici o pericoli per la navigazione","Comunicazioni mediche urgenti"],a:1,
+   explanation:"La chiamata DSC di Safety annuncia avvisi meteo o pericoli per la navigazione; segue poi il messaggio in fonia introdotto da 'SECURITÉ'."},
+
+  {q:"Cosa comporta l'inserimento dell'MMSI in un ricevitore VHF DSC?",opts:["La calibrazione automatica dell'antenna","La registrazione dello stesso è irreversibile per l'utente e necessita del centro assistenza in caso di errore","La disattivazione della trasmissione fonia"],a:1,
+   explanation:"L'inserimento dell'MMSI nel VHF è generalmente un'operazione irreversibile per l'utente: in caso di errore occorre rivolgersi al centro assistenza per modificarlo."},
+
+  {q:"Cosa indica l'icona MAIL sul display VHF?",opts:["Batteria scarica","Messaggio DSC non letto","Errore nel GPS"],a:1,
+   explanation:"L'icona MAIL (busta) segnala la presenza di un messaggio DSC ricevuto e non ancora letto nella memoria dell'apparato."},
+
+  {q:"Quale zona GMDSS copre le regioni polari?",opts:["Area A2","Area A3","Area A4"],a:2,
+   explanation:"L'Area A4 comprende le regioni polari oltre i 70° di latitudine, non coperte dai satelliti geostazionari; qui si usano principalmente le onde HF."},
+
+  {q:"Come si pronuncia il Call Sign 'ICTW2'?",opts:["India Charlie Tango Whiskey Two","India Charlie Tango William Two","India Charlie Tango West Two"],a:0,
+   explanation:"Con l'alfabeto fonetico ICAO/NATO: I=India, C=Charlie, T=Tango, W=Whiskey, 2=Two. Serve a evitare errori di comprensione via radio."},
+
+  {q:"Quale connettore è comune per l'antenna VHF?",opts:["BNC","PL-259","USB-C"],a:1,
+   explanation:"Il connettore PL-259 (maschio) con presa SO-239 è lo standard robusto per le antenne VHF marine."},
+
+  {q:"Cosa si intende per chiamata 'Simplex'?",opts:["Trasmissione e ricezione su frequenze diverse","Comunicazione solo tra stazione costiera e nave","Trasmissione e ricezione sulla stessa frequenza"],a:2,
+   explanation:"In simplex trasmissione e ricezione avvengono sulla stessa frequenza in modo alternato: mentre uno parla l'altro ascolta (tipico nave-nave)."},
+
+  {q:"Quale tasto si usa per eliminare l'acqua dalla griglia dell'altoparlante?",opts:["AQUA","SQL","DW"],a:0,
+   explanation:"La funzione AQUA (o AquaQuake) emette una vibrazione sonora a bassa frequenza che espelle l'acqua dalla griglia dell'altoparlante, ripristinando l'audio."},
+
+  {q:"Cosa deve fare una nave che riceve un Distress DSC?",opts:["Inviare immediatamente l'ACK","Rimanere in ascolto sul canale 16 senza interferire","Ripetere la chiamata sul canale 70"],a:1,
+   explanation:"La nave che riceve un distress DSC deve mettersi in ascolto sul canale 16 senza dare l'ACK (che spetta alle stazioni costiere/SAR) per non interferire con il soccorso."},
+
+  {q:"Quale frequenza è riservata alle comunicazioni DSC?",opts:["156.800 MHz","156.525 MHz","157.425 MHz"],a:1,
+   explanation:"La frequenza 156.525 MHz corrisponde al canale 70, riservata al DSC in VHF. 156.800 MHz è invece il canale 16 in fonia."},
+
+  {q:"Cosa significa l'acronimo MMSI?",opts:["Marine Meteorological Safety Information","Maritime Mobile Service Identity","Maritime Manual Safety Indicator"],a:1,
+   explanation:"MMSI = Maritime Mobile Service Identity, il numero di 9 cifre che identifica univocamente la stazione radio nelle comunicazioni digitali DSC e AIS."},
+
+  {q:"Qual è la velocità di propagazione delle onde radio?",opts:["300.000 km/s","150.000 km/s","450.000 km/s"],a:0,
+   explanation:"Le onde radio, come tutte le onde elettromagnetiche, si propagano alla velocità della luce, circa 300.000 km/s nel vuoto."},
+
+  {q:"Per le navi nella Laguna Veneta, dove deve essere installata la radio?",opts:["In qualsiasi luogo asciutto","In plancia, comoda dal posto di governo","Nella sala macchine"],a:1,
+   explanation:"Il VHF deve essere installato in plancia, comodamente raggiungibile dal posto di governo, così da poterlo usare senza abbandonare il comando dell'unità."},
+
+  {q:"Cosa si usa per regolare la soglia del rumore di fondo?",opts:["Manopola VOLUME","Manopola SQL","Tasto HI/LO"],a:1,
+   explanation:"La manopola SQL (Squelch) regola la soglia oltre la quale il ricevitore lascia passare l'audio, eliminando il fruscio di fondo in assenza di segnale."},
+
+  {q:"Quale tipo di antenna NON è ammessa sulle navi?",opts:["Antenna omnidirezionale","Antenna direttiva","Antenna collineare"],a:1,
+   explanation:"Le antenne direttive non sono ammesse perché irradiano in una sola direzione: le navi, cambiando rotta, hanno bisogno di antenne omnidirezionali."},
+
+  {q:"Cosa trasmette una chiamata di Urgency?",opts:["Informazioni mediche urgenti","Avvisi di sicurezza generici","Dati di posizione"],a:0,
+   explanation:"La chiamata di urgenza (PAN PAN) trasmette situazioni gravi ma non di immediato pericolo di vita, come emergenze mediche urgenti a bordo."},
+
+  {q:"Quale documento autorizza l'uso del VHF in Italia?",opts:["Certificato ROC","Licenza di esercizio radioelettrica","Patente nautica"],a:1,
+   explanation:"L'uso della stazione VHF a bordo è autorizzato dalla Licenza di esercizio della stazione radioelettrica, rilasciata dal Ministero competente."},
+
+  {q:"Cosa indica il prefisso '98' in un MMSI?",opts:["Stazione costiera","Unità associata a nave madre","Mezzo di soccorso aereo"],a:1,
+   explanation:"Il prefisso '98' identifica le unità (es. tender, lance) associate a una nave madre. Le stazioni costiere usano invece '00' e i mezzi SAR aerei '111'."},
+
+  {q:"Quale canale è dedicato alle chiamate di soccorso in fonia?",opts:["Canale 70","Canale 16","Canale 9"],a:1,
+   explanation:"Il canale 16 è il canale internazionale di chiamata e soccorso in fonia. Il canale 70 è invece riservato al DSC digitale."},
+
+  {q:"Cosa si deve fare dopo l'esposizione alla salsedine?",opts:["Pulire con solventi aggressivi","Lavare con acqua dolce e asciugare","Sostituire l'antenna"],a:1,
+   explanation:"Dopo l'esposizione alla salsedine si lava l'apparato (specie i portatili) con acqua dolce e si asciuga, per prevenire corrosione e depositi salini."},
+
+  {q:"Quale classe di apparato VHF è prevista per il diporto?",opts:["Classe A","Classe D","Classe SOLAS"],a:1,
+   explanation:"Per il diporto è prevista la Classe D del DSC, standard più semplice e economico, mentre la Classe A/SOLAS è riservata alle grandi navi mercantili."},
+
+  {q:"Cosa significa 'PAN PAN' in una chiamata radio?",opts:["Emergenza grave (Distress)","Urgenza","Sicurezza"],a:1,
+   explanation:"'PAN PAN' (dal francese panne, guasto) segnala una situazione di urgenza: grave ma senza pericolo imminente di vita, di livello inferiore al MAYDAY."},
+
+  {q:"Quale intervallo di temperatura è ammesso per il VHF?",opts:["-10°C a +50°C","-20°C a +60°C","0°C a +40°C"],a:1,
+   explanation:"L'intervallo di temperatura di funzionamento ammesso per gli apparati VHF marini è tipicamente da -20°C a +60°C, per resistere alle condizioni ambientali di bordo."},
+
+  {q:"Cosa si intende per 'Seelonce'?",opts:["Conferma di ricezione","Richiesta di silenzio radio","Chiamata di prova"],a:1,
+   explanation:"'Seelonce' (dal francese silence) impone il silenzio radio durante un'emergenza: 'SEELONCE MAYDAY' è imposto dalla nave in pericolo o dalla stazione coordinatrice."},
+
+  {q:"Quale è il centro VTS attivo per la Laguna Veneta?",opts:["Roma Radio","Venezia","Trieste Radio"],a:1,
+   explanation:"Il VTS (Vessel Traffic Service) competente per la Laguna Veneta è quello di Venezia, che gestisce il traffico nell'area lagunare e portuale."},
+
+  {q:"Cosa è vietato durante un temporale?",opts:["Usare il GPS","Usare il VHF senza antenna","Trasmettere con il VHF"],a:2,
+   explanation:"Durante un temporale è sconsigliato/vietato trasmettere con il VHF: l'antenna alta può attirare fulmini e la trasmissione aumenta il rischio. Meglio scollegare l'antenna."},
+
+  {q:"Quale standard garantisce l'impermeabilità IPX7?",opts:["Resistenza a pioggia leggera","Immersione fino a 1 metro per 30 minuti","Protezione da spruzzi"],a:1,
+   explanation:"Il grado IPX7 (Ingress Protection) garantisce la tenuta all'immersione temporanea fino a 1 metro di profondità per 30 minuti."},
+
+  {q:"Cosa è incluso nel messaggio di un DSC Distress?",opts:["Numero di persone a bordo","Identità MMSI e posizione","Tipo di carico trasportato"],a:1,
+   explanation:"Il messaggio DSC di distress include automaticamente l'identità MMSI e la posizione GPS con l'ora; la natura dell'emergenza è opzionale, non il numero di persone."},
+
+  {q:"Quale canale usa il VTS di Venezia come primario?",opts:["Canale 11","Canale 9","Canale 13"],a:1,
+   explanation:"Il VTS di Venezia utilizza il canale 9 come canale primario di lavoro per la gestione e il monitoraggio del traffico marittimo."},
+
+  {q:"Cosa si regola con la manopola SQL?",opts:["Volume audio","Soglia del rumore di fondo","Potenza di trasmissione"],a:1,
+   explanation:"La manopola SQL (Squelch) regola la soglia di silenziamento: elimina il fruscio di fondo quando non c'è segnale utile, aprendo l'audio solo per segnali sufficientemente forti."},
+
+  {q:"Qual è la potenza tipica erogabile da un apparecchio VHF marino fisso?",opts:["Solo 5 W in ogni caso","Variabile da 10 W a 100 W","Commutabile tra 1 W (bassa) e 25 W (massima)"],a:2,
+   explanation:"Il VHF fisso è commutabile tra 1 W (bassa potenza, comunicazioni ravvicinate) e 25 W (massima, lunga distanza), tramite il tasto HI/LO."},
+
+  {q:"Cosa indica il codice fonetico 'Quebec'?",opts:["Q","K","C"],a:0,
+   explanation:"Nell'alfabeto fonetico ICAO/NATO 'Quebec' corrisponde alla lettera Q, usata per compitare senza ambiguità via radio."},
+
+  {q:"Quale funzione permette di monitorare tre canali?",opts:["Dual Watch","Tri-watch","Priority Scan"],a:1,
+   explanation:"La funzione Tri-watch consente di monitorare tre canali contemporaneamente (in modo alternato), tipicamente il 16 più altri due a scelta."},
+
+  {q:"Cosa è necessario per una chiamata DSC Individuale?",opts:["Conoscere il MMSI del destinatario","Trasmettere sul canale 16","Autorizzazione della Capitaneria"],a:0,
+   explanation:"Per una chiamata DSC individuale bisogna conoscere l'MMSI del destinatario, che identifica univocamente la stazione da contattare."},
+
+  {q:"Quale è il MID della Croazia?",opts:["247","238","211"],a:1,
+   explanation:"Il MID (Maritime Identification Digits) della Croazia è 238; il 247 è dell'Italia e il 211 della Germania."},
+
+  {q:"Cosa significa 'SECURITÉ' in una chiamata radio?",opts:["Distress","Safety","Urgency"],a:1,
+   explanation:"'SECURITÉ' (francese, sicurezza) introduce i messaggi di sicurezza (Safety): avvisi meteo e pericoli per la navigazione."},
+
+  {q:"Quante cifre ha un MMSI?",opts:["6 cifre","9 cifre","12 cifre"],a:1,
+   explanation:"L'MMSI è composto da 9 cifre, di cui le prime tre sono il MID che indica la nazionalità della stazione."},
+
+  {q:"Cosa si deve fare dopo aver ricevuto un ACK per una chiamata Routine?",opts:["Spegnere la radio","Comunicare in fonia sul canale assegnato","Ripetere la chiamata DSC"],a:1,
+   explanation:"Ricevuto l'ACK a una chiamata di routine, ci si sposta sul canale di lavoro concordato e si prosegue la comunicazione in fonia."},
+
+  {q:"Quale è il primo passo per inviare un Distress DSC generico?",opts:["Premere brevemente il tasto DISTRESS","Tenere premuto il tasto DISTRESS per 3-5 secondi","Selezionare la natura dell'emergenza"],a:1,
+   explanation:"Per lanciare un distress DSC generico si solleva il coperchietto e si tiene premuto il tasto DISTRESS per 3-5 secondi, fino all'invio confermato dall'apparato."},
+
+  {q:"Cosa è vietato sul canale 70?",opts:["Trasmissioni DSC","Trasmissioni in fonia","Ricezione di chiamate di Safety"],a:1,
+   explanation:"Sul canale 70 è vietata la fonia (voce): è riservato esclusivamente alle chiamate digitali DSC."},
+
+  {q:"Quale organizzazione sviluppa gli standard NMEA?",opts:["International Maritime Organization","National Marine Electronics Association","Global Maritime Distress and Safety System"],a:1,
+   explanation:"Gli standard NMEA (es. NMEA 0183, NMEA 2000) sono sviluppati dalla National Marine Electronics Association, associazione dei costruttori di elettronica nautica."},
+
+  {q:"Cosa si intende per 'ACK' in una chiamata DSC?",opts:["All Clear Call","Acknowledgement (conferma di ricezione)","Activation Key Code"],a:1,
+   explanation:"ACK = Acknowledgement, la conferma di ricezione di una chiamata DSC inviata dal destinatario o dalla stazione competente."},
+
+  {q:"Quale è il tempo massimo di trasmissione continua per evitare il time-out?",opts:["1 minuto","5 minuti","10 minuti"],a:1,
+   explanation:"Molti VHF prevedono un time-out (TOT) che interrompe la trasmissione dopo circa 5 minuti continui, per evitare di bloccare un canale con il PTT premuto involontariamente."},
+
+  {q:"Cosa è essenziale per il collegamento GPS a un VHF?",opts:["Batteria dedicata","Interfaccia NMEA","Antenna direttiva"],a:1,
+   explanation:"Il collegamento GPS-VHF richiede un'interfaccia NMEA, lo standard con cui i dati di posizione vengono trasferiti al VHF per il DSC."},
+
+  {q:"Quale comando si usa per passare da 25W a 1W?",opts:["Tasto HI/LO","Manopola SQL","Tasto AQUA"],a:0,
+   explanation:"Il tasto HI/LO commuta la potenza di trasmissione tra alta (25 W) e bassa (1 W), utile per non intasare le frequenze nelle comunicazioni ravvicinate."},
+
+  {q:"Cosa indica l'icona GPS lampeggiante sul display?",opts:["Dati GPS validi ricevuti","Nessun dato GPS ricevuto","Errore nel calcolo della posizione"],a:1,
+   explanation:"L'icona GPS lampeggiante segnala l'assenza di dati GPS validi: la posizione non è disponibile e non verrebbe inserita in un eventuale distress."},
+
+  {q:"Quale zona GMDSS richiede sistemi satellitari INMARSAT?",opts:["Area A1","Area A2","Area A3"],a:2,
+   explanation:"L'Area A3 (tra circa 70°N e 70°S, fuori dalla copertura VHF/MF costiera) richiede sistemi satellitari geostazionari come INMARSAT per le comunicazioni di soccorso."},
+
+  {q:"Cosa significa 'MAYDAY' in una chiamata radio?",opts:["Urgenza medica","Distress (pericolo grave e imminente)","Avviso di sicurezza"],a:1,
+   explanation:"'MAYDAY' (dal francese m'aider, aiutatemi) è il segnale di distress: si usa solo in caso di pericolo grave e imminente per la vita o per la nave."},
+
+  {q:"Quale è la procedura corretta per una chiamata di Safety?",opts:["Iniziare con 'PAN PAN'","Iniziare con 'SECURITÉ'","Inviare solo DSC senza fonia"],a:1,
+   explanation:"La chiamata di sicurezza si annuncia con 'SECURITÉ' ripetuto tre volte, seguito dall'identificazione e dal messaggio (di solito su canale di lavoro dopo l'annuncio sul 16)."},
+
+  {q:"Cosa si deve regolare per ottimizzare la ricezione di segnali deboli?",opts:["Aumentare il livello SQL","Ridurre il livello SQL","Attivare il Dual Watch"],a:1,
+   explanation:"Per captare segnali deboli si riduce il livello dello Squelch (SQL), abbassando la soglia di apertura dell'audio; si tollera così un po' di fruscio."},
+
+  {q:"Quale è la frequenza di chiamata DSC in MF?",opts:["2.182 kHz","2.187.5 kHz","4.125 kHz"],a:1,
+   explanation:"In MF (media frequenza) il DSC usa la frequenza di 2187.5 kHz. La 2182 kHz è invece la frequenza di soccorso in fonia in MF."},
+
+  {q:"Cosa è incluso nella Marine Equipment Directive (MED)?",opts:["Standard di addestramento per operatori","Requisiti di sicurezza per apparecchiature marittime","Procedure di soccorso SAR"],a:1,
+   explanation:"La MED (Marine Equipment Directive) è la direttiva europea che stabilisce i requisiti di sicurezza e certificazione (marchio timone) delle apparecchiature marittime."},
+
+  {q:"Quale tasto permette l'accesso rapido al canale 16?",opts:["Tasto MENU","Tasto 16/C","Tasto DISTRESS"],a:1,
+   explanation:"Il tasto 16/C (o CALL) permette di richiamare immediatamente il canale 16 da qualsiasi altro canale, per un accesso rapido al canale di soccorso."},
+
+  {q:"Cosa si intende per 'orizzonte ottico' nelle comunicazioni VHF?",opts:["Distanza massima teorica senza ostacoli","Area coperta da satelliti geostazionari","Zona entro 5 miglia dalla costa"],a:0,
+   explanation:"L'orizzonte ottico (o radio) è la distanza massima teorica di collegamento in linea di vista, determinata dall'altezza delle antenne e dalla curvatura terrestre."},
+
+  {q:"Quale è il compito del VTS di Venezia?",opts:["Gestire le licenze radio","Fornire informazioni sul traffico e meteo","Assegnare i codici MMSI"],a:1,
+   explanation:"Il VTS (Vessel Traffic Service) di Venezia monitora e assiste il traffico marittimo, fornendo informazioni su traffico, condizioni meteo e sicurezza della navigazione."},
+
+  {q:"Cosa è necessario per attivare la sezione DSC di un VHF?",opts:["Licenza di operatore","Memorizzazione del MMSI","Collegamento a un GPS esterno"],a:1,
+   explanation:"Per attivare il DSC bisogna aver memorizzato l'MMSI nell'apparato: senza di esso l'apparecchio non può inviare chiamate digitali identificate."},
+
+  {q:"Quale frase si usa per confermare la ricezione di un messaggio?",opts:["OVER","OUT","RECEIVED"],a:2,
+   explanation:"'RECEIVED' (o 'ROGER') conferma la corretta ricezione di un messaggio. 'OVER' significa 'passo' e 'OUT' 'chiudo'."},
+
+  {q:"Cosa causa la perdita di segnale in VHF?",opts:["Basse temperature","Ostacoli fisici e distanza","Uso del canale duplex"],a:1,
+   explanation:"Poiché la propagazione VHF è a vista, il segnale si perde per ostacoli fisici (terra, edifici, altre navi) e per l'eccessiva distanza oltre l'orizzonte radio."},
+
+  {q:"Quale è la tensione di alimentazione standard di un VHF?",opts:["24 V CC","12 V CC","220 V CA"],a:1,
+   explanation:"La tensione standard di alimentazione dei VHF marini è 12 V in corrente continua (CC), tipica degli impianti di bordo."},
+
+  {q:"Cosa si deve fare se il VHF è collegato a un impianto a 24V?",opts:["Collegarlo direttamente","Usare un riduttore di tensione","Impostare la potenza a 1W"],a:1,
+   explanation:"Con impianto a 24 V occorre un riduttore/convertitore DC-DC che abbassi la tensione a 12 V, evitando di danneggiare il VHF con una tensione doppia."},
+
+  {q:"Quale è lo scopo della funzione AquaQuake?",opts:["Eliminare l'acqua dalla griglia dell'altoparlante","Migliorare la ricezione GPS","Calibrare l'antenna"],a:0,
+   explanation:"AquaQuake genera una vibrazione sonora a bassa frequenza che scaccia l'acqua dalla griglia dell'altoparlante, ripristinando la chiarezza dell'audio."},
+
+  {q:"Cosa indica 'BUSY' sul display VHF?",opts:["Trasmissione in corso","Ricezione di un segnale o squelch aperto","Batteria in carica"],a:1,
+   explanation:"L'indicazione 'BUSY' segnala che il canale è occupato: lo squelch è aperto perché si sta ricevendo un segnale."},
+
+  {q:"Quale è la potenza di uscita audio esterna minima?",opts:["2 W","4.5 W","1 W"],a:1,
+   explanation:"La potenza di uscita audio verso altoparlanti esterni è tipicamente attorno ai 4,5 W, per garantire un ascolto udibile anche in ambienti rumorosi."},
+
+  {q:"Cosa è essenziale per una trasmissione efficiente?",opts:["Cavo coassiale senza ossidazione","Uso di canali duplex","Alta potenza in ogni condizione"],a:0,
+   explanation:"Un cavo coassiale integro e connettori privi di ossidazione garantiscono un ROS basso e la massima potenza irradiata dall'antenna."},
+
+  {q:"Quale documento contiene il Call Sign dell'imbarcazione?",opts:["Certificato SRC","Licenza di esercizio radioelettrica","Manuale del VHF"],a:1,
+   explanation:"Il Call Sign (nominativo internazionale) dell'imbarcazione è riportato nella Licenza di esercizio della stazione radioelettrica."},
+
+  {q:"Cosa si intende per 'DSC Relay'?",opts:["Ripetizione di una chiamata DSC ricevuta","Chiamata DSC automatica ogni 4 minuti","Comunicazione tra due stazioni via satellite"],a:0,
+   explanation:"Il DSC Relay (rilancio) è la ritrasmissione di un allarme di distress ricevuto, effettuata in favore di un'altra nave quando le stazioni costiere non rispondono."},
+
+  {q:"Quale è la prima azione in caso di ricezione di un Distress?",opts:["Inviare un ACK","Arrestare l'allarme e restare in ascolto sul CH16","Contattare la stazione in difficoltà sul canale 70"],a:1,
+   explanation:"Ricevuto un distress si tacita l'allarme acustico e ci si mette in ascolto sul canale 16, senza inviare ACK (che spetta alle stazioni costiere/SAR)."},
+
+  {q:"Cosa è vietato nelle comunicazioni radio?",opts:["Usare il codice fonetico","Linguaggio indecente o blasfemo","Comunicazioni di routine sul canale 16"],a:1,
+   explanation:"Nelle comunicazioni radio è vietato il linguaggio indecente o blasfemo; le trasmissioni devono essere professionali ed essenziali (e il canale 16 non va usato per la routine)."},
+
+  {q:"Quale è la frequenza di ricezione GLONASS?",opts:["1575.42 MHz","1602 MHz","1227.60 MHz"],a:1,
+   explanation:"Il GLONASS (sistema satellitare russo) trasmette nella banda L1 attorno a 1602 MHz, mentre il GPS americano usa 1575.42 MHz."},
+
+  {q:"Cosa si deve fare prima di un temporale?",opts:["Aumentare la potenza di trasmissione","Scollegare alimentazione e antenna","Attivare il Dual Watch"],a:1,
+   explanation:"Prima di un temporale è prudente scollegare alimentazione e antenna del VHF, per proteggere l'apparato da sovratensioni causate da eventuali fulmini."},
+
+  {q:"Quale è la portata tipica VHF tra due taxi acquei?",opts:["5 miglia","10 miglia","20 miglia"],a:1,
+   explanation:"Tra due unità con antenne basse come i taxi acquei, la portata VHF pratica è di circa 10 miglia nautiche, limitata dall'orizzonte ottico."},
+
+  {q:"Cosa significa 'NMEA Buffer'?",opts:["Interfaccia per memorizzazione temporanea di dati","Tipo di antenna GPS","Protocollo di emergenza"],a:0,
+   explanation:"Il buffer NMEA è una memoria temporanea che immagazzina i dati (es. posizione dal GPS) in transito tra gli strumenti collegati via NMEA."},
+
+  {q:"Quale apparato è obbligatorio per navi SOLAS?",opts:["VHF classe D","VHF classe A","VHF portatile"],a:1,
+   explanation:"Le navi soggette alla convenzione SOLAS devono avere un VHF DSC di Classe A, più completo e affidabile rispetto alla Classe D del diporto."},
+
+  {q:"Cosa si usa per identificare una nave in fonia?",opts:["Codice MMSI","Call Sign","Numero di matricola"],a:1,
+   explanation:"In fonia (voce) la nave si identifica con il Call Sign (nominativo internazionale) e il nome; l'MMSI è invece usato nelle comunicazioni digitali DSC."},
+
+  {q:"Quale è il tempo minimo per tenere premuto il tasto DISTRESS?",opts:["1 secondo","3-5 secondi","10 secondi"],a:1,
+   explanation:"Il tasto DISTRESS va tenuto premuto per 3-5 secondi: questo ritardo intenzionale evita l'invio accidentale di falsi allarmi."},
+
+  {q:"Cosa è necessario per le comunicazioni DSC a lungo raggio?",opts:["Certificato LRC","Certificato SRC","Licenza di operatore ROC"],a:0,
+   explanation:"Per operare apparati a lungo raggio (MF/HF, satellitari) serve il certificato LRC (Long Range Certificate); l'SRC (Short Range Certificate) basta per il solo VHF."},
+
+  {q:"Quale canale è utilizzato dai Servizi Ausiliari a Venezia?",opts:["Canale 11","Canale 13","Canale 9"],a:1,
+   explanation:"I Servizi Ausiliari a Venezia utilizzano il canale 13, dedicato alle comunicazioni di manovra e servizio."},
+
+  {q:"Cosa si deve regolare per migliorare la leggibilità del display?",opts:["Contrasto","Squelch","Volume"],a:0,
+   explanation:"Per migliorare la leggibilità del display si regola il contrasto (e la retroilluminazione), adattandolo alle condizioni di luce ambientale."},
+
+  {q:"Quale è la corretta procedura per una chiamata radio di Routine?",opts:["Iniziare con 'MAYDAY'","Nominare la stazione chiamata 3 volte","Usare solo il canale 70"],a:1,
+   explanation:"In una chiamata di routine si nomina la stazione chiamata (fino a 3 volte), poi ci si identifica con 'THIS IS' e il proprio nominativo, quindi si concorda un canale di lavoro."},
+
+  {q:"Cosa indica l'acronimo 'EPIRB'?",opts:["Emergency Position Indicating Radio Beacon","Electronic Position and Identification Radio Band","Emergency Portable International Rescue Beacon"],a:0,
+   explanation:"EPIRB = Emergency Position Indicating Radio Beacon, la radioboa di emergenza che, attivata (anche automaticamente in immersione), trasmette via satellite posizione e identità della nave in pericolo."}
 ];
 
 const TOTAL = ALL_QUESTIONS.length;
@@ -551,6 +996,10 @@ function renderQuestion() {
   document.getElementById('q-text').textContent = q.q;
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className = 'feedback';
+  // nascondi e resetta la spiegazione
+  const expl = document.getElementById('explanation');
+  expl.classList.remove('show');
+  document.getElementById('explanation-text').textContent = '';
   document.getElementById('next-btn').style.display = 'none';
   const opts = document.getElementById('options');
   opts.innerHTML = '';
@@ -581,7 +1030,14 @@ function selectAnswer(chosen) {
     fb.textContent = `✗ Risposta errata. Corretta: ${['A','B','C'][correct]}) ${q.opts[correct]}`;
     fb.className = 'feedback ko';
   }
-  answers.push({ q: q.q, chosen: q.opts[chosen], correct: q.opts[correct], isCorrect });
+
+  // mostra la spiegazione (sempre, corretta o errata)
+  if (q.explanation) {
+    document.getElementById('explanation-text').textContent = q.explanation;
+    document.getElementById('explanation').classList.add('show');
+  }
+
+  answers.push({ q: q.q, chosen: q.opts[chosen], correct: q.opts[correct], isCorrect, explanation: q.explanation || '' });
 
   // aggiorna il contatore dinamicamente ad ogni risposta
   seenCount = Math.min(seenCount + 1, TOTAL);
@@ -626,12 +1082,14 @@ function showResults() {
     div.className = 'review-item';
     const hint = !a.isCorrect
       ? `<div class="review-correct-hint">Risposta corretta: ${a.correct}</div>` : '';
+    const expl = a.explanation
+      ? `<div class="review-expl"><strong>Spiegazione:</strong> ${a.explanation}</div>` : '';
     div.innerHTML = `
       <div class="review-q">${i + 1}. ${a.q}</div>
       <div class="review-answer ${a.isCorrect ? 'review-ok' : 'review-ko'}">
         <span>${a.isCorrect ? '✓' : '✗'}</span>
         <div><div>${a.chosen}</div>${hint}</div>
-      </div>`;
+      </div>${expl}`;
     review.appendChild(div);
   });
 }
