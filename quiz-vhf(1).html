@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz VHF Marino</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-bg: #eff6ff;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --surface: #ffffff;
+    --surface-1: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-bg: #1e3a5f;
+      --success: #4ade80;
+      --success-bg: #14532d;
+      --danger: #f87171;
+      --danger-bg: #7f1d1d;
+      --surface: #1e293b;
+      --surface-1: #0f172a;
+      --border: #334155;
+      --text: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--surface-1);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  #app { width: 100%; max-width: 620px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Top bar */
+  .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+  }
+  .seen-counter {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .seen-counter strong { color: var(--text); }
+  .seen-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+  }
+  .seen-dot.done { background: var(--success); }
+
+  /* Start */
+  .start-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+  }
+  .logo { font-size: 2.5rem; margin-bottom: 1rem; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 0.5rem; }
+  .subtitle { font-size: 15px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 2rem; }
+  .rules { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 2rem; }
+  .rule { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-secondary); padding: 4px 0; }
+  .rule-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 22px; border-radius: var(--radius);
+    font-size: 15px; font-weight: 500; cursor: pointer;
+    border: none; transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface-1); }
+
+  /* Progress */
+  .quiz-header { margin-bottom: 1.5rem; }
+  .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .q-counter { font-size: 13px; color: var(--text-muted); }
+  .score-live { font-size: 13px; color: var(--text-secondary); }
+  .progress-bar { height: 5px; background: var(--border); border-radius: 3px; }
+  .progress-fill { height: 5px; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+
+  /* Question */
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+  }
+  .q-text { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 1.25rem; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option-btn {
+    text-align: left;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    line-height: 1.4;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .option-label {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--border); color: var(--text-secondary);
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.15s, color 0.15s;
+  }
+  .option-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-bg); }
+  .option-btn:hover:not(:disabled) .option-label { background: var(--accent); color: #fff; }
+  .option-btn.correct { border-color: var(--success); background: var(--success-bg); }
+  .option-btn.correct .option-label { background: var(--success); color: #fff; }
+  .option-btn.wrong { border-color: var(--danger); background: var(--danger-bg); }
+  .option-btn.wrong .option-label { background: var(--danger); color: #fff; }
+  .option-btn.show-correct { border-color: var(--success); background: var(--success-bg); }
+  .option-btn.show-correct .option-label { background: var(--success); color: #fff; }
+  .option-btn:disabled { cursor: default; }
+
+  .feedback { margin-top: 1rem; font-size: 14px; min-height: 20px; line-height: 1.4; }
+  .feedback.ok { color: var(--success); }
+  .feedback.ko { color: var(--danger); }
+  .next-row { margin-top: 1.25rem; display: flex; justify-content: flex-end; }
+
+  /* Results */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .score-big { font-size: 56px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .score-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 1.25rem; }
+  .badge {
+    display: inline-block; padding: 6px 18px;
+    border-radius: 999px; font-size: 14px; font-weight: 600;
+  }
+  .badge.pass { background: var(--success-bg); color: var(--success); }
+  .badge.fail { background: var(--danger-bg); color: var(--danger); }
+  .pass-text { color: var(--success); }
+  .fail-text { color: var(--danger); }
+
+  .review-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+  .review-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  .review-item { border-top: 1px solid var(--border); padding: 0.9rem 0; }
+  .review-item:first-of-type { border-top: none; padding-top: 0; }
+  .review-q { font-size: 13px; color: var(--text-secondary); margin-bottom: 5px; }
+  .review-answer { font-size: 13px; display: flex; align-items: flex-start; gap: 6px; }
+  .review-ok { color: var(--success); }
+  .review-ko { color: var(--danger); }
+  .review-correct-hint { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Reset notice */
+  .reset-notice {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+    display: none;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 1rem 0.75rem; }
+    .start-card, .question-card, .result-card, .review-section { padding: 1.25rem 1rem; }
+    .score-big { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR (visible on all screens) -->
+  <div class="top-bar">
+    <div class="seen-counter">
+      <span class="seen-dot" id="seen-dot"></span>
+      Domande viste: <strong id="seen-count">0</strong>/<strong id="total-count">0</strong>
+    </div>
+  </div>
+
+  <!-- START -->
+  <div id="start-screen" class="screen active">
+    <div class="start-card">
+      <div class="logo">📻</div>
+      <h1>Quiz VHF Marino</h1>
+      <p class="subtitle">Preparazione all'esame per la patente nautica — radiotelefonia VHF e GMDSS.</p>
+      <div class="rules">
+        <div class="rule"><span class="rule-icon">🎲</span><span>10 domande alla volta, sempre nuove — prima di ripetere una domanda le vedrai tutte</span></div>
+        <div class="rule"><span class="rule-icon">✅</span><span>Puoi sbagliare al massimo <strong>2 risposte</strong> per superare il quiz</span></div>
+        <div class="rule"><span class="rule-icon">💡</span><span>Dopo ogni risposta vedi subito la correzione</span></div>
+      </div>
+      <div class="reset-notice" id="reset-notice">
+        🔄 Hai visto tutte le domande — il banco è stato rimescolato, si riparte dall'inizio!
+      </div>
+      <button class="btn btn-primary" onclick="startQuiz()">Inizia quiz →</button>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz-screen" class="screen">
+    <div class="quiz-header">
+      <div class="progress-row">
+        <span class="q-counter" id="q-counter">Domanda 1 di 10</span>
+        <span class="score-live" id="score-live">0 corrette</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+    </div>
+    <div class="question-card">
+      <div class="q-text" id="q-text"></div>
+      <div class="options" id="options"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="next-row">
+        <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none">
+          Avanti →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="result-screen" class="screen">
+    <div class="result-card">
+      <div class="score-big" id="result-score"></div>
+      <div class="score-label">risposte corrette su 10</div>
+      <span class="badge" id="result-badge"></span>
+    </div>
+    <div class="review-section">
+      <div class="review-title">Riepilogo risposte</div>
+      <div id="review-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="startQuiz()">Nuovo quiz →</button>
+      <button class="btn btn-secondary" onclick="showScreen('start-screen')">Home</button>
+      <button class="btn btn-secondary" onclick="resetPool()">Ricomincia da capo</button>
+    </div>
+  </div>
+
+</div>
+<script>
+const ALL_QUESTIONS = [
+  {q:"Che cosa significa l'acronimo GMDSS?",opts:["Global Marine Data Satellite System","General Marine Digital Security System","Global Maritime Distress and Safety System"],a:2},
+  {q:"Il GMDSS è un sistema progettato per:",opts:["Solo comunicazioni commerciali","Controllare la navigazione automatica","Gestire comunicazioni di soccorso e sicurezza in mare"],a:2},
+  {q:"Il GMDSS si applica principalmente a:",opts:["Solo alle navi militari","Solo alle piccole unità da diporto","Naviglio maggiore (>300 tsl)"],a:2},
+  {q:"Quale tecnologia è alla base del GMDSS?",opts:["Wi-Fi marino","HF solo fonia","DSC (Digital Selective Calling)"],a:2},
+  {q:"Quale canale è dedicato alle chiamate DSC in VHF?",opts:["Ch.13","Ch.70","Ch.16"],a:1},
+  {q:"Il canale 16 nel GMDSS è usato per:",opts:["Chiamate e soccorso in fonia","Solo chiamate interne","Trasmissioni DSC"],a:0},
+  {q:"In Area A1 la copertura è assicurata da:",opts:["Satelliti INMARSAT","Stazione costiera con DSC su VHF","Ripetitori terrestri VOR"],a:1},
+  {q:"La portata tipica dell'Area A1 è:",opts:["150-200 Mn","20-40 Mn","1-5 Mn"],a:1},
+  {q:"In Area A3 si comunicano distress principalmente tramite:",opts:["Sistemi satellitari","Solo AIS","HF in fonia"],a:0},
+  {q:"Il GMDSS prevede l'ascolto continuo:",opts:["Ch.16 + Ch.70","Solo Ch.70","Solo Ch.16"],a:0},
+  {q:"Un VHF marino è un apparato:",opts:["Solo ricevitore","Solo trasmettitore","Ricetrasmettitore"],a:2},
+  {q:"La potenza massima di un VHF fisso è:",opts:["50W","25W","5W"],a:1},
+  {q:"Il comando HIGH/LOW serve a:",opts:["Regolare la potenza di trasmissione","Cambiare canale rapidamente","Regolare la squelch"],a:0},
+  {q:"La funzione DUAL WATCH permette:",opts:["Aumento di potenza","Ricezione solo DSC","Ascolto alternato tra due canali"],a:2},
+  {q:"Il tasto Distress:",opts:["Non esiste nei VHF moderni","È libero e immediato","È protetto da coperchio"],a:2},
+  {q:"Chi ascolta costantemente il Ch.70?",opts:["La sezione DSC","Il GPS","La sezione fonia"],a:0},
+  {q:"Il microtelefono serve a:",opts:["Misurare distanza","Memorizzare MMSI","Convertire la voce in segnale elettrico"],a:2},
+  {q:"Gli apparati VHF funzionano tipicamente a:",opts:["48V","110V","12V"],a:2},
+  {q:"Se a bordo abbiamo solo 24V si usa:",opts:["Una batteria da 1.5V","Un riduttore di tensione","Un inverter"],a:1},
+  {q:"La sezione DSC:",opts:["Amplifica la potenza","Decodifica messaggi digitali","Serve solo in porto"],a:1},
+  {q:"Le onde VHF sono:",opts:["Ionizzanti","Acustiche","Elettromagnetiche non ionizzanti"],a:2},
+  {q:"La portata VHF è:",opts:["Ottica","Illimitata","≤1 km"],a:0},
+  {q:"L'altezza antenna:",opts:["Non influisce","Influenza la portata","Blocca GPS"],a:1},
+  {q:"Le antenne VHF di bordo sono:",opts:["Direzionali strette","HF monopolo","Omnidirezionali"],a:2},
+  {q:"Il ROS indica:",opts:["Velocità nave","Qualità collegamento antenna-radio","Numero canali"],a:1},
+  {q:"ROS > 3:",opts:["Perdita potenza e rischio danni","Massima efficienza","Nessun problema"],a:0},
+  {q:"Il cavo antenna è:",opts:["Doppino","Coassiale","Fibra ottica"],a:1},
+  {q:"Connettore tipico:",opts:["USB","RJ45","PL"],a:2},
+  {q:"Antenna tarata male:",opts:["Migliora segnale","Aumenta ROS","Stabilizza frequenza"],a:1},
+  {q:"Antenna chiusa alla continua:",opts:["Amplifica segnale","Scarica cariche su massa","Riduce potenza"],a:1},
+  {q:"Il GPS fornisce:",opts:["Latitudine e longitudine","Solo rotta","Solo velocità"],a:0},
+  {q:"GPS integrato nel VHF:",opts:["Invia posizione nei messaggi DSC","Mostra marea","Sostituisce AIS"],a:0},
+  {q:"In distress la posizione:",opts:["Non serve","È inserita automaticamente","Si comunica solo a voce"],a:1},
+  {q:"VHF riceve GPS tramite:",opts:["NMEA","Bluetooth","HDMI"],a:0},
+  {q:"DSC richiede:",opts:["Batteria esterna","Inserire MMSI","Cambio antenna"],a:1},
+  {q:"MMSI identifica:",opts:["Il comandante","La batteria","La nave"],a:2},
+  {q:"Se la posizione non appare sul VHF:",opts:["Non influisce","È prescrizione da risolvere","È normale"],a:1},
+  {q:"GPS senza display invia a:",opts:["Solo AIS","Solo EPIRB","VHF o plotter"],a:2},
+  {q:"Il GPS è fondamentale soprattutto:",opts:["Solo con mare calmo","Nel distress","Solo in porto"],a:1},
+  {q:"Attivazione DSC richiede:",opts:["Antenna diversa","Memorizzazione MMSI","Cambio canale"],a:1},
+  {q:"Un MMSI nave ha:",opts:["9 cifre","6 cifre","12 cifre"],a:0},
+  {q:"MID dell'Italia:",opts:["111","238","247"],a:2},
+  {q:"MMSI costiero inizia con:",opts:["98","00","11"],a:1},
+  {q:"Call Sign italiano inizia con:",opts:["V (Victor)","I (India)","A (Alfa)"],a:1},
+  {q:"Call Sign identifica:",opts:["Rotta","Stazione radio di bordo","Comandante"],a:1},
+  {q:"Navi figlie usano MMSI:",opts:["98...","00...","50..."],a:0},
+  {q:"Trieste Radio MMSI:",opts:["002470135","002387010","247000019"],a:0},
+  {q:"VTS Venezia MMSI:",opts:["002470135","247111999","247000019"],a:2},
+  {q:"Rijeka Radio MMSI:",opts:["002387010","247000019","002470135"],a:0},
+  {q:"MMSI identifica:",opts:["L'armatore","Il singolo VHF","La nave"],a:2},
+  {q:"Ch.16 è per:",opts:["AIS","Chiamata e soccorso","Port operations"],a:1},
+  {q:"Ch.70 è per:",opts:["AIS","Fonia","DSC digitale"],a:2},
+  {q:"Simplex:",opts:["Solo ascolto","Nave-nave","Nave-costiera"],a:1},
+  {q:"Duplex:",opts:["Nave-nave","Nave-costiera","Solo piloti"],a:1},
+  {q:"Ch.86 è:",opts:["Duplex","Simplex","Solo AIS"],a:0},
+  {q:"Ch.13 è:",opts:["DSC","Servizi ausiliari","EPIRB"],a:1},
+  {q:"Capitaneria Venezia usa:",opts:["Ch.14","Ch.05","Ch.11"],a:2},
+  {q:"Capitaneria Chioggia usa:",opts:["Ch.14","Ch.09","Ch.11"],a:0},
+  {q:"Trieste Radio ascolta:",opts:["Ch.13","Ch.16","Ch.70"],a:1},
+  {q:"VTS Venezia lavora su:",opts:["Ch.70","Ch.9","Ch.86"],a:1},
+  {q:"Distress si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:0},
+  {q:"Urgency si introduce con:",opts:["SECURITE'","PAN PAN","MAYDAY"],a:1},
+  {q:"Safety si introduce con:",opts:["MAYDAY","PAN PAN","SECURITE'"],a:2},
+  {q:"Dopo DSC Distress si passa a:",opts:["Ch.13","Ch.16","Ch.70"],a:1},
+  {q:"Messaggio MAYDAY deve essere:",opts:["In codice","Veloce","Lento e chiaro"],a:2},
+  {q:"Distress DSC ripete ogni:",opts:["1 min","1 ora","4-5 min"],a:2},
+  {q:"MAYDAY include:",opts:["Solo nome nave","Posizione + persone a bordo","Solo stato mare"],a:1},
+  {q:"Specificare natura distress:",opts:["Premendo Distress lungo/breve","Accendere AIS","Cambiare canale"],a:0},
+  {q:"Esempio natura distress:",opts:["Man Over Board","Vento forte","Porto chiuso"],a:0},
+  {q:"Dopo invio distress non si deve:",opts:["Ascoltare","Stare su Ch.16","Spegnere radio"],a:2},
+  {q:"Ricevuto Distress DSC:",opts:["NON dare ACK","Ignorare","Dare ACK"],a:0},
+  {q:"Dopo ricezione distress si resta su:",opts:["Ch.13","Ch.70","Ch.16"],a:2},
+  {q:"Distress Relay:",opts:["Fine trasmissione","Messaggio di routine","Rilancia distress se costa non risponde"],a:2},
+  {q:"Annullare falso distress:",opts:["Ignorare","Spegnere/riaccendere + messaggio","Solo cambiare canale"],a:1},
+  {q:"Annullamento inizia con:",opts:["PAN PAN","SECURITY CALL","ALL STATIONS"],a:2},
+  {q:"Dopo ALL STATIONS si dice:",opts:["OK","THIS IS + call sign + MMSI","STOP"],a:1},
+  {q:"Nel cancel distress si indica:",opts:["Ora UTC","Temperatura","Velocità"],a:0},
+  {q:"ACK al Distress può darlo:",opts:["Stazione costiera/SAR","Pesca locale","Qualsiasi nave"],a:0},
+  {q:"Durante emergenza:",opts:["Lasciare libero Ch.16","Cambiare canale spesso","Parlare sempre"],a:0},
+  {q:"OVER significa:",opts:["Comunicazione conclusa","Passo, attendo risposta","Ripetere"],a:1},
+  {q:"Quale dispositivo trasmette segnale satellitare di soccorso?",opts:["GPS","EPIRB","AIS"],a:1},
+  {q:"Quale dispositivo localizza MOB via AIS?",opts:["NAVTEX","AIS-SART","VHF portatile"],a:1},
+  {q:"Il servizio VTS fornisce:",opts:["Solo ormeggio","Previsioni maree","Informazioni traffico e sicurezza"],a:2},
+  {q:"Chi coordina SAR?",opts:["MRCC","VTS","Pilota porto"],a:0},
+  {q:"Se ricevi MAYDAY e costa non risponde:",opts:["Distress Relay","Aspetti 30 min","Ignori"],a:0},
+  {q:"Per identificare nave in fonia:",opts:["Nome nave + Call Sign + MMSI","Solo nome","Numero persone"],a:0},
+  {q:"Collisione senza feriti:",opts:["SECURITE'","MAYDAY","PAN PAN"],a:2},
+  {q:"Oggetto pericoloso alla deriva:",opts:["PAN PAN","MAYDAY","SECURITE'"],a:2},
+  {q:"NAVTEX trasmette:",opts:["Idrografia","Posizione nave","Avvisi meteo e sicurezza"],a:2},
+  {q:"VHF portatile deve avere:",opts:["Solo 9","Solo 16","Ch.16 e Ch.70"],a:2},
+  {q:"Distanza VHF taxi acquei:",opts:["100 Mn","1 Mn","~10 Mn"],a:2},
+  {q:"Ch.13 serve per:",opts:["Soccorso","Servizi portuali","Manovra e sicurezza"],a:2},
+  {q:"Comunicazioni devono essere:",opts:["Conversazionali","Brevi, chiare, senza frasi inutili","In dialetto"],a:1},
+  {q:"Voce deve essere:",opts:["Gridata","Velocissima","Scandita e costante"],a:2},
+  {q:"Chiusura comunicazione:",opts:["OVER","FINITO","OUT"],a:2},
+  {q:"Passo la parola:",opts:["OVER","OUT","GO"],a:0},
+  {q:"ROS si misura con:",opts:["Voltmetro","ROSmeter","Tester"],a:1},
+  {q:"DSC Routine Call richiede:",opts:["Call Sign","MMSI destinatario","Niente"],a:1},
+  {q:"Se GPS scollegato:",opts:["Radio non funziona","DSC non inserisce posizione","Trasmette solo 25W"],a:1},
+  {q:"Incendio a bordo:",opts:["SECURITE'","MAYDAY FIRE","PAN PAN"],a:1}
+];
+
+const TOTAL = ALL_QUESTIONS.length;
+const BATCH = 10;
+
+// pool = indices of unseen questions in shuffled order
+let pool = [];
+let seenCount = 0;
+let didReset = false;
+
+// quiz state
+let questions = [], current = 0, score = 0, answers = [];
+
+function shuffle(arr) { return arr.slice().sort(() => Math.random() - 0.5); }
+
+function initPool() {
+  pool = shuffle(ALL_QUESTIONS.map((_, i) => i));
+  seenCount = 0;
+  didReset = false;
+}
+
+function updateSeenCounter() {
+  document.getElementById('seen-count').textContent = seenCount;
+  document.getElementById('total-count').textContent = TOTAL;
+  const dot = document.getElementById('seen-dot');
+  dot.className = seenCount >= TOTAL ? 'seen-dot done' : 'seen-dot';
+}
+
+function startQuiz() {
+  // if pool is empty, reset it and signal the user
+  if (pool.length < BATCH) {
+    initPool();
+    didReset = true;
+  }
+
+  // take next BATCH indices from front of pool
+  const indices = pool.splice(0, BATCH);
+  seenCount = Math.min(seenCount + BATCH, TOTAL);
+
+  questions = indices.map(i => ALL_QUESTIONS[i]);
+  current = 0; score = 0; answers = [];
+
+  // show/hide reset notice on start screen (already navigating away, but set for next visit)
+  document.getElementById('reset-notice').style.display = didReset ? 'block' : 'none';
+
+  updateSeenCounter();
+  showScreen('quiz-screen');
+  renderQuestion();
+}
+
+function resetPool() {
+  initPool();
+  updateSeenCounter();
+  document.getElementById('reset-notice').style.display = 'none';
+  showScreen('start-screen');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function renderQuestion() {
+  const q = questions[current];
+  const pct = (current / BATCH) * 100;
+  document.getElementById('q-counter').textContent = `Domanda ${current + 1} di ${BATCH}`;
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('score-live').textContent = `${score} corrette`;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('next-btn').style.display = 'none';
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-label">${['A','B','C'][i]}</span><span>${opt}</span>`;
+    btn.onclick = () => selectAnswer(i);
+    opts.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen) {
+  const q = questions[current];
+  const btns = document.querySelectorAll('.option-btn');
+  btns.forEach(b => b.disabled = true);
+  const correct = q.a;
+  const isCorrect = chosen === correct;
+  const fb = document.getElementById('feedback');
+  if (isCorrect) {
+    btns[chosen].classList.add('correct');
+    score++;
+    fb.textContent = '✓ Risposta corretta!';
+    fb.className = 'feedback ok';
+  } else {
+    btns[chosen].classList.add('wrong');
+    btns[correct].classList.add('show-correct');
+    fb.textContent = `✗ Risposta errata. Corretta: ${['A','B','C'][correct]}) ${q.opts[correct]}`;
+    fb.className = 'feedback ko';
+  }
+  answers.push({ q: q.q, chosen: q.opts[chosen], correct: q.opts[correct], isCorrect });
+  document.getElementById('score-live').textContent = `${score} corrette`;
+  document.getElementById('next-btn').style.display = 'inline-flex';
+}
+
+function nextQuestion() {
+  current++;
+  if (current < BATCH) {
+    renderQuestion();
+  } else {
+    showResults();
+  }
+}
+
+function showResults() {
+  showScreen('result-screen');
+  const errors = BATCH - score;
+  const passed = errors <= 2;
+  document.getElementById('result-score').textContent = `${score}/${BATCH}`;
+  document.getElementById('result-score').className = `score-big ${passed ? 'pass-text' : 'fail-text'}`;
+  const badge = document.getElementById('result-badge');
+  badge.textContent = passed
+    ? `✓ Superato (${errors} ${errors === 1 ? 'errore' : 'errori'})`
+    : `✗ Non superato (${errors} errori)`;
+  badge.className = `badge ${passed ? 'pass' : 'fail'}`;
+
+  // show how many questions remain
+  const remaining = pool.length;
+  const nextLabel = remaining >= BATCH
+    ? `Nuovo quiz → (${remaining} domande rimaste)`
+    : `Nuovo quiz → (banco esaurito, verrà rimescolato)`;
+  document.querySelector('.btn-row .btn-primary').textContent = nextLabel;
+
+  const review = document.getElementById('review-list');
+  review.innerHTML = '';
+  answers.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'review-item';
+    const hint = !a.isCorrect
+      ? `<div class="review-correct-hint">Risposta corretta: ${a.correct}</div>` : '';
+    div.innerHTML = `
+      <div class="review-q">${i + 1}. ${a.q}</div>
+      <div class="review-answer ${a.isCorrect ? 'review-ok' : 'review-ko'}">
+        <span>${a.isCorrect ? '✓' : '✗'}</span>
+        <div><div>${a.chosen}</div>${hint}</div>
+      </div>`;
+    review.appendChild(div);
+  });
+}
+
+// init on load
+initPool();
+updateSeenCounter();
+</script>
+</body>
+</html>
